@@ -735,7 +735,7 @@ function normalize(d, base){
 /* ================================================================
    2. ÉTAT + PERSISTANCE
    ================================================================ */
-const APP_VERSION = "15-web";   /* affiché en pied de page */
+const APP_VERSION = "16-web";   /* affiché en pied de page */
 const LS_KEY = "carnet-de-cote-v1";
 let S = null;          // état courant
 let DB = null;         // capacité db (sync multi-appareils)
@@ -2439,6 +2439,7 @@ function initAuthGate(){
   firebase.initializeApp(FIREBASE_CONFIG);
   const auth = firebase.auth();
   let modeSignup = false;
+  let justRejected = false;
 
   const form = document.getElementById("authForm");
   const toggle = document.getElementById("authToggleMode");
@@ -2455,6 +2456,7 @@ function initAuthGate(){
     e.preventDefault();
     const email = document.getElementById("authEmail").value.trim();
     const password = document.getElementById("authPassword").value;
+    justRejected = false;
     submit.disabled = true;
     const action = modeSignup
       ? auth.createUserWithEmailAndPassword(email, password)
@@ -2484,13 +2486,17 @@ function initAuthGate(){
       setInterval(fetchLivePrices, 20*60*1000);
     } else if(user){
       /* compte authentifié mais pas le bon : Firestore refusera de toute
-         façon, on déconnecte tout de suite pour éviter la confusion */
+         façon, on déconnecte tout de suite pour éviter la confusion.
+         justRejected évite que le "onAuthStateChanged(null)" déclenché par
+         ce signOut() n'efface aussitôt le message qu'on vient d'afficher. */
+      justRejected = true;
       auth.signOut();
       showAuthGate("Ce compte n'est pas autorisé sur cette application.");
     } else {
       const btnLogout = document.getElementById("btnLogout");
       if(btnLogout) btnLogout.hidden = true;
-      showAuthGate(null);
+      if(justRejected){ justRejected = false; }
+      else { showAuthGate(null); }
     }
   });
 }
@@ -2526,7 +2532,12 @@ function wireDb(db){
    9. DÉMARRAGE
    ================================================================ */
 function boot(){
-  S = normalize(loadLocal());
+  /* Si l'app est protégée par Firebase Auth, on ne charge PAS le cache local
+     dans l'état affiché tant que l'identité n'est pas vérifiée : le voile de
+     connexion masque visuellement l'écran, mais les données réelles ne
+     doivent pas non plus se retrouver dans le DOM (inspectable via les
+     outils de développement) avant que l'utilisateur autorisé soit connecté. */
+  S = normalize(typeof firebase!=="undefined" ? null : loadLocal());
   initTheme();
 
   document.getElementById("nav").onclick=e=>{
