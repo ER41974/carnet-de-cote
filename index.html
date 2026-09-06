@@ -409,268 +409,36 @@ const SECTORS = {
 const SECTOR_ORDER = ["Semi-conducteurs","Logiciel & IA","Internet","Automobile","Tech grand public","Réseau & infra","Espace","ETF","Indice","Autre"];
 const CVARS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8"];
 
-/* Watchlist : colonnes A, B, C, D, F, G, H de la feuille de consolidation */
-const SEED_WL = [
- ["Palantir","PLTR",76.41,88.48,179.92,155.38],
- ["Super Micro Computer","SMCI",15.96,18.48,36.71,31.70],
- ["Microsoft","MSFT",223.47,258.76,501.02,432.68],
- ["Micron Technology","MU",470.55,544.86,933.44,806.12],
- ["Arista Networks","ANET",99.81,115.58,189.26,163.44],
- ["BlackRock","BLK",596.96,691.24,1128.10,974.23],
- ["NVIDIA","NVDA",115.67,133.94,217.44,187.78],
- ["Apple","AAPL",174.38,201.92,325.13,280.78],
- ["Xiaomi","XIACF",1.89,2.19,3.50,3.02],
- ["AMD","AMD",257.65,298.34,459.61,396.92],
- ["S&P 500",".INX",4385.73,5078.39,7631.47,6590.54],
- ["Nasdaq Composite",".IXIC",15237.56,17644.10,26099.77,22539.76],
- ["Porsche AG","P911",24.83,28.75,51.11,44.15],
- ["CATL","CATL",61.00,70.88,75.26,65.01],
- ["Amundi PEA Nasdaq-100","PUST",65.44,75.78,117.00,101.04],
- ["Meta Platforms","META",324.99,376.32,578.54,499.63],
- ["Tencent","TCEHY",31.81,36.83,56.09,48.44],
- ["BYD Company","BYDDF",6.33,7.32,11.17,9.65],
- ["Qualcomm","QCOM",95.36,110.42,166.61,143.88],
- ["Alphabet","GOOGL",196.29,227.29,335.02,289.32],
- ["Tesla","TSLA",211.33,244.71,356.09,307.52],
- ["Intel","INTC",52.77,61.10,88.97,76.83],
- ["SpaceX (non coté)","SPCX",114.00,99.28,142.23,122.83],
- ["Xpeng (ADR)","XPEV",7.26,8.41,11.17,9.65],
- ["ARM Holdings","ARM",157.43,182.29,234.82,202.79],
- ["Broadcom","AVGO",209.58,242.67,369.68,319.26],
- ["Unitree Robotics","688836",63.65,73.70,81.89,70.72],
- ["ASML Holding","ASML",864.92,1005.00,1714.88,1475.86]
-].map(r=>({name:r[0],tk:r[1],recoEur:r[2],recoUsd:r[3],pxUsd:r[4],pxEur:r[5]}));
+/* Watchlist, positions, historique des ventes, plus-values, revenus et
+   journal : cet état de départ (« seed ») ne contient plus aucune donnée
+   personnelle. Les vraies données d'Éric vivent uniquement dans Firestore,
+   derrière l'authentification — jamais dans ce fichier source, public sur
+   GitHub Pages. Ces tableaux ne servent qu'à amorcer une toute première
+   utilisation locale (hors Firebase) avec un portefeuille vide. */
+const SEED_WL = [];
 
-/* Positions reconstruites depuis l'export officiel Trade Republic
-   (100 opérations de bourse, mars 2024 → juillet 2026), méthode du prix
-   moyen pondéré, frais d'ordre inclus. Chez Trade Republic tout se règle
-   en euros : le prix de revient EST en euros, il n'y a aucune conversion
-   à faire. `cur` ne sert qu'à afficher le cours dans sa devise de cotation.
-   Boursorama n'a pas d'export : ces trois lignes viennent de Google Finance,
-   dont les prix en dollars ont été ramenés en euros au taux de leur mois. */
-const SEED_POS = [
- ["Xiaomi","XIACF","TR",2419.4666,4.2231,"USD"],
- ["BYD Company","BYDDF","TR",549,11.4253,"USD"],
- ["Meta Platforms","META","TR",10,559.6800,"USD"],
- ["Super Micro Computer","SMCI","TR",130,33.9175,"USD"],
- ["Qualcomm","QCOM","TR",25,150.5304,"USD"],
- ["Palantir","PLTR","TR",22,132.5284,"USD"],
- ["Xpeng (ADR)","XPEV","TR",280,12.4330,"USD"],
- ["Arista Networks","ANET","TR",14,115.0385,"USD"],
- ["Microsoft","MSFT","TR",4,402.8333,"USD"],
- ["ARM Holdings","ARM","TR",6,107.0737,"USD"],
- ["SpaceX (non coté)","SPCX","TR",9,110.3111,"USD"],
- ["Tencent","TCEHY","TR",21,48.2176,"USD"],
- ["CATL","CATL","TR",14,71.7614,"EUR"],
- ["Amundi PEA Nasdaq-100","PUST","TR",2,63.1342,"EUR"],
- ["Microsoft","MSFT","BOURSO",1,253.7700,"USD"],
- ["Alphabet","GOOGL","BOURSO",1,94.1700,"USD"],
- ["Porsche AG","P911","BOURSO",6,85.3900,"EUR"]
-].map((r,i)=>({id:"p"+i,name:r[0],tk:r[1],acct:r[2],qty:r[3],pru:r[4],cur:r[5],ok:true}));
+const SEED_POS = [];
 
-/* Ordres limites de vente notés dans le Sheet BOURSE, repris tels quels.
-   [ticker, compte, prix cible dans la devise de cotation, nombre de titres] */
-const SEED_ORDERS = [["MSFT","TR",509,1],["XIACF","TR",3.90,60],["QCOM","TR",200,5],
-                     ["SPCX","TR",160,9],["ARM","TR",160,1],["P911","BOURSO",125,4]];
+const SEED_ORDERS = [];
 SEED_ORDERS.forEach(o=>{
   const p = SEED_POS.find(x=>x.tk===o[0] && x.acct===o[1]);
   if(p){ p.ordre=o[2]; p.ordreQty=o[3]; p.ordreSrc="Sheet"; }
 });
 
-/* Plus-values encaissées, nettes de frais et de taxes.
-   Les lignes Trade Republic viennent de l'export du courtier ; les trois
-   lignes Boursorama sont reconstituées depuis Google Finance.
-   [ticker, nom, compte, titres vendus, produit €, PV €] */
-const SEED_REAL = [
- ["AMD","AMD","TR",36,5700.12,1788.94],
- ["ARM","ARM Holdings","TR",26,4556.00,1583.44],
- ["NVDA","NVIDIA","TR",30,4825.48,1466.76],
- ["GOOGL","Alphabet","TR",22,5063.00,1338.32],
- ["TSLA","Tesla","BOURSO",9,2974.67,1259.36],
- ["INTC","Intel","TR",124,3459.52,1045.59],
- ["PUST","Amundi PEA Nasdaq-100","TR",17,1526.48,453.20],
- ["ANET","Arista Networks","TR",12,1813.36,432.90],
- ["XIACF","Xiaomi","TR",200,922.52,255.80],
- ["PLTR","Palantir","TR",6,1019.48,221.11],
- ["AAPL","Apple","TR",3,797.00,166.60],
- ["SMCI","Super Micro Computer","TR",17,730.34,153.74],
- ["MSFT","Microsoft","BOURSO",1,347.55,93.78],
- ["BYDDF","BYD Company","TR",7,315.10,97.40],
- ["GOOGL","Alphabet","BOURSO",1,125.16,30.99],
- ["MSFT","Microsoft","TR",2,823.20,17.53]
-].map(r=>({tk:r[0],name:r[1],acct:r[2],qty:r[3],prodEur:r[4],gainEur:r[5]}));
+const SEED_REAL = [];
 
-/* Revenus encaissés hors plus-values, relevés dans l'export Trade Republic. */
-const SEED_INCOME = {dividendes:121.70, interets:141.85, frais:99.00, versements:37990.87};
+const SEED_INCOME = {dividendes:0, interets:0, frais:0, versements:0};
 
-const SEED_FLAGS = [
- {tk:"XPEV", txt:"L'export Trade Republic donne 280 titres Xpeng (66 + 158 + 56). Ton portefeuille Google Finance n'en compte que 225 : le dernier achat du 26/06/2026 y est saisi 1 titre au lieu de 56. Vérifie dans l'application, l'écart vaut environ 530 €."},
- {tk:"SMCI", txt:"Vente de 17 titres Super Micro le 01/06/2026 à 43,02 € : elle est absente de ton portefeuille Google Finance, alors que la quantité y est juste. Elle est bien comptée ici, +154 € encaissés."},
- {tk:"BYDDF", txt:"Attribution d'actions gratuites le 29/07/2025 : 6 titres reçus pour 3 détenus. Ils entrent en quantité sans coût, ce qui abaisse mécaniquement le prix de revient — c'est correct et c'est bien le « split » dont tu parlais."},
- {tk:"BOURSO", txt:"Boursorama n'a pas d'export : les trois lignes viennent de Google Finance, dont les prix en dollars ont été ramenés en euros au taux du mois d'achat. Porsche, coté en euros, est exact ; Microsoft et Alphabet sont à ±2 % près."}
-];
+const SEED_FLAGS = [];
 
 /* Journal des opérations : une ligne par mouvement, au format
    date|compte|ticker|type|titres|prix unitaire €|montant €
-   Types : A achat · V vente · G titres gratuits · D dividende net.
-   Trade Republic vient de l'export du courtier ; Boursorama de Google Finance.
-   Les montants sont nets : frais d'ordre ajoutés aux achats, déduits des ventes. */
-const SEED_TXN = `2021-02-25|BOURSO|TSLA|A|6|186.08|1116.48
-2022-07-30|BOURSO|P911|A|6|85.39|512.34
-2023-02-13|BOURSO|MSFT|A|2|253.77|507.54
-2023-02-15|BOURSO|GOOGL|A|2|94.17|188.34
-2023-10-22|BOURSO|TSLA|A|3|199.62|598.86
-2024-03-20|TR|AMD|A|2|165|331
-2024-03-27|TR|ARM|A|2|114|229
-2024-04-02|TR|XIACF|A|0.466597|1.944|0.91
-2024-04-02|TR|XIACF|A|129|1.944|251.78
-2024-06-04|TR|INTC|A|6|28.36|171.16
-2024-07-09|BOURSO|TSLA|V|2|242.46|484.92
-2024-07-22|TR|QCOM|A|2|174.98|350.96
-2024-07-25|TR|NVDA|A|2|104.3|209.6
-2024-08-05|TR|INTC|A|15|18.3|275.5
-2024-09-05|TR|NVDA|A|8|96.2|770.6
-2024-09-06|TR|QCOM|A|5|145.98|730.9
-2024-09-11|BOURSO|GOOGL|V|1|125.16|125.16
-2024-09-12|TR|INTC|D|0|0|2.03
-2024-09-15|BOURSO|MSFT|V|1|347.55|347.55
-2024-09-26|TR|QCOM|D|0|0|1.29
-2024-10-03|TR|NVDA|D|0|0|0.07
-2024-11-05|TR|NVDA|V|5|128|639
-2024-11-05|TR|XIACF|V|60|3.3|197
-2024-11-10|BOURSO|TSLA|V|3|319.57|958.71
-2024-11-26|TR|BYDDF|A|10|31|311
-2024-11-29|TR|QCOM|A|10|149.46|1495.6
-2024-12-08|BOURSO|TSLA|V|1|382.76|382.76
-2024-12-08|BOURSO|TSLA|V|3|382.76|1148.28
-2024-12-09|TR|XIACF|V|60|3.7|221
-2024-12-11|TR|INTC|A|53|19.258|1021.67
-2024-12-16|TR|QCOM|A|8|148.1|1185.8
-2024-12-18|TR|AMD|A|7|118.96|833.72
-2024-12-18|TR|INTC|A|50|18.892|945.6
-2024-12-19|TR|NVDA|A|11|125|1376
-2024-12-19|TR|QCOM|D|0|0|11.7
-2024-12-27|TR|NVDA|D|0|0|0.04
-2025-01-07|TR|MSFT|A|3|409|1228
-2025-01-21|TR|ARM|V|1|150|149
-2025-01-27|TR|AAPL|A|3|209.8|630.4
-2025-01-27|TR|MSFT|A|3|396|1189
-2025-01-27|TR|NVDA|A|9|111.28|1002.52
-2025-02-07|TR|BYDDF|V|4|40.26|160.04
-2025-02-13|TR|AAPL|D|0|0|0.61
-2025-02-14|TR|INTC|V|10|24|239
-2025-02-24|TR|GOOGL|A|6|172.5|1036
-2025-02-24|TR|INTC|V|45|23.7|1065.5
-2025-02-25|TR|AMD|A|12|100.08|1201.96
-2025-02-25|TR|AMD|A|15|102.9|1544.5
-2025-02-25|TR|GOOGL|A|16|167.98|2688.68
-2025-02-27|TR|ARM|A|4|129|517
-2025-03-03|TR|ARM|A|10|125|1251
-2025-03-05|TR|ARM|A|5|112|561
-2025-03-07|TR|PUST|A|3|74.01|223.03
-2025-03-13|TR|MSFT|D|0|0|2.52
-2025-03-17|TR|GOOGL|D|0|0|2.22
-2025-03-27|TR|QCOM|D|0|0|10.84
-2025-04-01|TR|XIACF|A|370|5.492|2033.04
-2025-04-02|TR|NVDA|D|0|0|0.13
-2025-04-07|TR|PUST|A|16|60.97|976.52
-2025-05-15|TR|AAPL|D|0|0|0.4
-2025-05-21|TR|BYDDF|V|3|52.02|155.06
-2025-06-06|TR|MSFT|V|2|412.1|823.2
-2025-06-12|TR|MSFT|D|0|0|2.4
-2025-06-16|TR|GOOGL|D|0|0|2.21
-2025-06-25|TR|AMD|V|3|121|362
-2025-06-25|TR|AMD|V|6|120.3|720.8
-2025-06-25|TR|ARM|V|1|137.2|136.2
-2025-06-26|TR|QCOM|D|0|0|10.54
-2025-06-26|TR|XIACF|V|80|6.319|504.52
-2025-06-27|TR|ARM|V|2|139|277
-2025-07-03|TR|NVDA|D|0|0|0.11
-2025-07-09|TR|NVDA|V|5|137|684
-2025-07-15|TR|AMD|V|3|129.02|386.06
-2025-07-15|TR|AMD|V|3|129.02|386.06
-2025-07-18|TR|PUST|V|5|80.24|400.2
-2025-07-28|TR|AMD|V|6|148|887
-2025-07-28|TR|NVDA|V|5|151|754
-2025-07-29|TR|BYDDF|D|0|0|0.85
-2025-07-29|TR|BYDDF|G|-2.4|0|0
-2025-07-29|TR|BYDDF|G|2.4|0|0
-2025-07-29|TR|BYDDF|G|2.4|0|0
-2025-07-29|TR|BYDDF|G|3.6|0|0
-2025-08-12|TR|BYDDF|D|0|0|-0.85
-2025-08-12|TR|BYDDF|D|0|0|0.83
-2025-08-14|TR|AAPL|D|0|0|0.37
-2025-09-01|TR|PLTR|A|16|133|2129
-2025-09-04|TR|BYDDF|A|259|11.6|3005.4
-2025-09-04|TR|GOOGL|V|8|199|1591
-2025-09-11|TR|MSFT|D|0|0|1.57
-2025-09-15|TR|GOOGL|D|0|0|1.38
-2025-09-18|TR|INTC|V|10|24.72|246.2
-2025-09-18|TR|INTC|V|10|28|279
-2025-09-18|TR|INTC|V|13|27|350
-2025-09-22|TR|PUST|V|5|85|424
-2025-09-25|TR|QCOM|D|0|0|10.42
-2025-10-02|TR|NVDA|D|0|0|0.07
-2025-10-06|TR|AMD|V|12|194.1|2328.2
-2025-10-10|TR|BYDDF|A|89|11.335|1009.82
-2025-10-13|TR|ARM|V|6|151|905
-2025-10-14|TR|ARM|V|3|155.6|465.8
-2025-10-17|TR|BYDDF|A|100|11.495|1150.5
-2025-10-17|TR|XIACF|A|700|5.014|3510.8
-2025-10-20|TR|AMD|V|2|208|415
-2025-10-22|TR|GOOGL|V|4|221|883
-2025-10-23|TR|INTC|V|26|35.07|910.82
-2025-10-24|TR|AMD|V|1|216|215
-2025-10-28|TR|NVDA|V|7|170|1189
-2025-10-29|TR|PLTR|V|6|170.08|1019.48
-2025-10-31|TR|BYDDF|A|92|11.005|1013.46
-2025-10-31|TR|META|A|2|565.8|1132.6
-2025-10-31|TR|XIACF|A|210|4.799|1008.79
-2025-11-03|TR|META|A|8|557.9|4464.2
-2025-11-07|TR|ANET|A|26|115|2991
-2025-11-07|TR|SMCI|A|87|35.01|3046.87
-2025-11-13|TR|AAPL|D|0|0|0.37
-2025-11-13|TR|SMCI|A|60|32.3|1939
-2025-11-19|TR|GOOGL|V|10|259|2589
-2025-11-20|TR|XIACF|A|250|4.16|1041
-2025-11-21|TR|PLTR|A|12|132|1585
-2025-12-02|TR|INTC|V|10|37|369
-2025-12-11|TR|MSFT|D|0|0|1.72
-2025-12-18|TR|QCOM|D|0|0|10.44
-2025-12-22|TR|ARM|A|11|96|1057
-2025-12-23|TR|META|D|0|0|2.46
-2025-12-24|TR|NVDA|D|0|0|0.03
-2026-01-30|TR|XPEV|A|66|15.2|1004.2
-2026-02-12|TR|AAPL|D|0|0|0.36
-2026-03-12|TR|MSFT|D|0|0|1.68
-2026-03-26|TR|META|D|0|0|2.43
-2026-03-26|TR|QCOM|D|0|0|10.28
-2026-04-01|TR|NVDA|D|0|0|0.03
-2026-04-22|TR|ANET|V|9|150|1349
-2026-04-22|TR|ARM|V|10|168|1679
-2026-04-27|TR|XIACF|A|600|3.38|2029
-2026-05-07|TR|PUST|V|5|98|489
-2026-05-14|TR|AAPL|D|0|0|0.38
-2026-05-14|TR|NVDA|V|8|195.06|1559.48
-2026-05-19|TR|CATL|A|14|71.69|1004.66
-2026-05-22|TR|AAPL|V|3|266|797
-2026-05-22|TR|TCEHY|A|21|48.17|1012.57
-2026-05-28|TR|ARM|V|2|291|581
-2026-06-01|TR|SMCI|V|17|43.02|730.34
-2026-06-11|TR|MSFT|D|0|0|1.69
-2026-06-16|TR|ARM|V|1|364|363
-2026-06-16|TR|XIACF|A|360|2.8|1009
-2026-06-16|TR|XPEV|A|158|12|1897
-2026-06-22|TR|PUST|V|2|107.14|213.28
-2026-06-25|TR|META|D|0|0|2.49
-2026-06-25|TR|QCOM|D|0|0|10.88
-2026-06-26|TR|XPEV|A|56|10.34|580.04
-2026-07-06|TR|ANET|V|3|155.12|464.36
-2026-07-17|TR|SPCX|A|9|110.2|992.8
-2026-07-31|TR|BYDDF|D|0|0|14.71`.trim().split("\n").map(l=>{
+   Types : A achat · V vente · G titres gratuits · D dividende net. */
+const SEED_TXN_RAW = ``;
+const SEED_TXN = SEED_TXN_RAW.trim() ? SEED_TXN_RAW.trim().split("\n").map(l=>{
   const [d,acct,tk,type,qty,px,amt] = l.split("|");
   return {d, acct, tk, type, qty:+qty, px:+px, amt:+amt};
-});
+}) : [];
 
 const TXN_LABEL  = {A:"Achat", V:"Vente", G:"Titres gratuits", D:"Dividende"};
 const TXN_PLURAL = {A:"Achats", V:"Ventes", G:"Titres gratuits", D:"Dividendes"};
@@ -682,16 +450,15 @@ const ACCOUNTS = {
 
 const DEFAULT_STATE = {
   v:11,
-  fx:0.8638,                      /* 1 USD = 0,8638 EUR au 01/09/2026 (BCE : 1 € = 1,159 $) */
-  pxDate:"2026-09-01",
+  fx:0.86,
+  pxDate:"",
   positions:SEED_POS,
   realised:SEED_REAL,
   income:SEED_INCOME,
   txn:SEED_TXN,
   flags:SEED_FLAGS,
   watchlist:SEED_WL,
-  /* premier repère : clôture du 1ᵉʳ septembre 2026, relevée sur les deux comptes */
-  history:[{d:"2026-09-01",total:40909.70,tr:39922.63,pea:987.07}],
+  history:[],
   seeded:true
 };
 /* Fusionne l'historique par date plutôt que de le remplacer : un relevé
@@ -735,7 +502,7 @@ function normalize(d, base){
 /* ================================================================
    2. ÉTAT + PERSISTANCE
    ================================================================ */
-const APP_VERSION = "16-web";   /* affiché en pied de page */
+const APP_VERSION = "17-web";   /* affiché en pied de page */
 const LS_KEY = "carnet-de-cote-v1";
 let S = null;          // état courant
 let DB = null;         // capacité db (sync multi-appareils)
@@ -987,13 +754,6 @@ function vSynth(C){
       <div class="m">${(C.pl>=0?"+":"")+eur(C.pl)} sur ${eur(C.cost)} investis</div></div>
     <div class="kpi"><div class="k">Lignes en gain</div><div class="v">${gains} <span style="font-size:14px;color:var(--muted)">/ ${C.rows.length}</span></div>
       <div class="m">${alerts.length} au-delà de +20 % sur leur cours d'achat</div></div>
-  </div>
-
-  <div class="callout a" style="margin-top:16px">
-    <span>✓</span><div><b>Google Finance affiche une perte de ${eur(9005)} qui n'existe pas.</b>
-    Il convertit tes prix d'achat en dollars puis les affiche avec un signe €, ce qui gonfle ton prix de revient d'environ 15 %.
-    SpaceX en est l'exemple : payé <b>110,20 €</b> le titre le 17/07/2026 d'après ton relevé Trade Republic, il y figure à « 125,56 € ».
-    Les chiffres ci-dessous viennent de l'export du courtier, en euros réels, frais d'ordre compris.</div>
   </div>
 
   <div class="eyebrow">Évolution du portefeuille</div>
