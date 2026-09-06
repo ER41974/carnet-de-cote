@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 
 <style>
 /* ============================ TOKENS ============================ */
@@ -320,6 +321,20 @@ footer.foot{
 </head>
 <body>
 
+<div id="authGate" hidden style="position:fixed;inset:0;z-index:999;background:var(--paper);display:flex;align-items:center;justify-content:center;padding:24px">
+  <form id="authForm" style="width:100%;max-width:360px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:28px">
+    <h1 style="font-size:20px;margin:0 0 4px">Carnet de Cote</h1>
+    <p style="color:var(--muted);margin:0 0 20px;font-size:13px">Connexion requise — accès réservé à ton compte.</p>
+    <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px">Adresse e-mail</label>
+    <input id="authEmail" type="email" autocomplete="username" required style="width:100%;box-sizing:border-box;padding:10px;margin-bottom:14px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface-2);color:var(--ink);font-size:14px">
+    <label style="display:block;font-size:13px;color:var(--ink-2);margin-bottom:4px">Mot de passe</label>
+    <input id="authPassword" type="password" autocomplete="current-password" required minlength="6" style="width:100%;box-sizing:border-box;padding:10px;margin-bottom:16px;border:1px solid var(--line-strong);border-radius:8px;background:var(--surface-2);color:var(--ink);font-size:14px">
+    <div id="authError" style="display:none;color:var(--loss);font-size:13px;margin-bottom:12px"></div>
+    <button type="submit" class="btn primary" id="authSubmit" style="width:100%;justify-content:center;margin-bottom:10px">Se connecter</button>
+    <button type="button" class="btn ghost" id="authToggleMode" style="width:100%;justify-content:center;font-size:13px">Première visite ? Créer le compte</button>
+  </form>
+</div>
+
 <div class="topbar">
   <div class="topbar-in">
     <div class="brand">
@@ -335,6 +350,7 @@ footer.foot{
       <button class="btn" id="btnGF" title="Coller la page Google Finance pour actualiser les cours">Actualiser les cours</button>
       <button class="btn" id="btnSnap" title="Figer la valeur du jour dans l'historique">Point du jour</button>
       <button class="btn ghost" id="btnTheme" title="Thème clair / sombre" aria-label="Basculer le thème clair ou sombre">Thème</button>
+      <button class="btn ghost" id="btnLogout" hidden title="Se déconnecter">Déconnexion</button>
     </div>
   </div>
   <div class="topbar-in" style="padding-top:0;padding-bottom:0">
@@ -719,7 +735,7 @@ function normalize(d, base){
 /* ================================================================
    2. ÉTAT + PERSISTANCE
    ================================================================ */
-const APP_VERSION = "13-web";   /* affiché en pied de page */
+const APP_VERSION = "14-web";   /* affiché en pied de page */
 const LS_KEY = "carnet-de-cote-v1";
 let S = null;          // état courant
 let DB = null;         // capacité db (sync multi-appareils)
@@ -2323,10 +2339,13 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "896445364092",
   appId: "1:896445364092:web:81c16a6dcd3116873296f9"
 };
+/* Accès réservé à ce compte : la règle Firestore vérifie le même e-mail
+   côté serveur, ceci n'est qu'un confort d'affichage côté client. */
+const ALLOWED_EMAIL = "iheric974@gmail.com";
+
 /* Le document est fixe (une seule "ligne" pour tout le portefeuille) :
    son chemin doit correspondre exactement à la règle Firestore publiée. */
 function firebaseDbShim(){
-  firebase.initializeApp(FIREBASE_CONFIG);
   const fs = firebase.firestore();
   const ref = fs.collection("carnet").doc("x7k2m9p4q1");
   return {
@@ -2400,6 +2419,82 @@ async function fetchLivePrices(){
   render();
 }
 
+/* Passerelle de connexion (déploiement web/Firebase uniquement) : tant
+   qu'on n'est pas authentifié avec le bon compte, l'appli reste masquée
+   et Firestore refuse de toute façon lecture/écriture (règle serveur). */
+function showAuthGate(msg){
+  const gate = document.getElementById("authGate");
+  if(gate) gate.hidden = false;
+  const err = document.getElementById("authError");
+  if(err){
+    if(msg){ err.textContent = msg; err.style.display = "block"; }
+    else { err.textContent = ""; err.style.display = "none"; }
+  }
+}
+function hideAuthGate(){
+  const gate = document.getElementById("authGate");
+  if(gate) gate.hidden = true;
+}
+function initAuthGate(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth = firebase.auth();
+  let modeSignup = false;
+
+  const form = document.getElementById("authForm");
+  const toggle = document.getElementById("authToggleMode");
+  const submit = document.getElementById("authSubmit");
+
+  toggle.onclick = () => {
+    modeSignup = !modeSignup;
+    submit.textContent = modeSignup ? "Créer le compte" : "Se connecter";
+    toggle.textContent = modeSignup ? "Déjà un compte ? Se connecter" : "Première visite ? Créer le compte";
+    showAuthGate(null);
+  };
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    submit.disabled = true;
+    const action = modeSignup
+      ? auth.createUserWithEmailAndPassword(email, password)
+      : auth.signInWithEmailAndPassword(email, password);
+    action
+      .catch(err=>{
+        const msgs = {
+          "auth/email-already-in-use": "Un compte existe déjà avec cet e-mail — connecte-toi plutôt.",
+          "auth/invalid-credential": "E-mail ou mot de passe incorrect.",
+          "auth/wrong-password": "E-mail ou mot de passe incorrect.",
+          "auth/user-not-found": "Aucun compte avec cet e-mail — crée-le d'abord.",
+          "auth/weak-password": "Mot de passe trop court (6 caractères minimum).",
+          "auth/invalid-email": "Adresse e-mail invalide."
+        };
+        showAuthGate(msgs[err.code] || ("Erreur : "+err.message));
+      })
+      .finally(()=>{ submit.disabled = false; });
+  };
+
+  auth.onAuthStateChanged(user=>{
+    if(user && user.email && user.email.toLowerCase() === ALLOWED_EMAIL.toLowerCase()){
+      hideAuthGate();
+      const btnLogout = document.getElementById("btnLogout");
+      if(btnLogout){ btnLogout.hidden = false; btnLogout.onclick = () => auth.signOut(); }
+      wireDb(firebaseDbShim());
+      fetchLivePrices();
+      setInterval(fetchLivePrices, 20*60*1000);
+    } else if(user){
+      /* compte authentifié mais pas le bon : Firestore refusera de toute
+         façon, on déconnecte tout de suite pour éviter la confusion */
+      auth.signOut();
+      showAuthGate("Ce compte n'est pas autorisé sur cette application.");
+    } else {
+      const btnLogout = document.getElementById("btnLogout");
+      if(btnLogout) btnLogout.hidden = true;
+      showAuthGate(null);
+    }
+  });
+}
+
 /* branche la persistance (Firestore ou capacité Claude) une fois pour
    toutes : identique dans les deux cas, seule la source diffère. */
 function wireDb(db){
@@ -2455,14 +2550,16 @@ function boot(){
     window.claude.use("sample").then(s=>{ if(s) SAMPLE=s; }).catch(()=>{});
     window.claude.use("downloads").then(d=>{ if(d) DL=d; }).catch(()=>{});
   } else if(typeof firebase!=="undefined"){
-    setSync("Synchronisation…");
-    try{ wireDb(firebaseDbShim()); }
+    setSync("Connexion requise");
+    try{ initAuthGate(); }
     catch(e){ setSync("Stockage local (cet appareil)"); }
+    return; /* initAuthGate() démarre wireDb() + fetchLivePrices() une fois connecté */
   } else {
     setSync("Stockage local (cet appareil)");
   }
 
-  /* cours en direct : au chargement, puis toutes les 20 minutes */
+  /* cours en direct : au chargement, puis toutes les 20 minutes
+     (uniquement hors déploiement Firebase, géré ci-dessus après connexion) */
   fetchLivePrices();
   setInterval(fetchLivePrices, 20*60*1000);
 }
