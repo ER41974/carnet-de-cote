@@ -719,7 +719,7 @@ function normalize(d, base){
 /* ================================================================
    2. ÉTAT + PERSISTANCE
    ================================================================ */
-const APP_VERSION = "12-web";   /* affiché en pied de page */
+const APP_VERSION = "13-web";   /* affiché en pied de page */
 const LS_KEY = "carnet-de-cote-v1";
 let S = null;          // état courant
 let DB = null;         // capacité db (sync multi-appareils)
@@ -2355,34 +2355,49 @@ const TD_SYMBOL = { ".INX":"SPX", ".IXIC":"IXIC" };
 const TD_SKIP = ["P911","CATL","688836"];
 let lastLiveRefresh = null;
 
+/* Le plan gratuit Twelve Data limite à 8 crédits/minute (1 symbole = 1 crédit).
+   On découpe donc les requêtes en petits lots espacés dans le temps plutôt
+   que d'envoyer les ~25 valeurs d'un coup (ce qui déclenchait un 429). */
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+const TD_CHUNK = 7;
+const TD_DELAY_MS = 61000;
+
 async function fetchLivePrices(){
   if(!TD_KEY) return;
   const lignes = S.watchlist.filter(w=>!TD_SKIP.includes(w.tk));
   if(!lignes.length) return;
-  const symbols = lignes.map(w=>TD_SYMBOL[w.tk]||w.tk);
+  const el = document.getElementById("liveFoot");
+  let maj=0; const echecs=[]; let erreurReseau=false;
+
   try{
-    const [prixRes, fxRes] = await Promise.all([
-      fetch("https://api.twelvedata.com/price?symbol="+encodeURIComponent(symbols.join(","))+"&apikey="+TD_KEY).then(r=>r.json()),
-      fetch("https://api.twelvedata.com/exchange_rate?symbol=USD/EUR&apikey="+TD_KEY).then(r=>r.json())
-    ]);
-    let maj=0; const echecs=[];
-    lignes.forEach((w,i)=>{
-      const sym = symbols[i];
-      const entry = symbols.length>1 ? prixRes[sym] : prixRes;
-      const val = entry && parseFloat(entry.price);
-      if(val>0){ setPrice(w.tk, val, "USD"); maj++; } else { echecs.push(w.tk); }
-    });
+    const fxRes = await fetch("https://api.twelvedata.com/exchange_rate?symbol=USD/EUR&apikey="+TD_KEY).then(r=>r.json());
     if(fxRes && fxRes.rate){ S.fx = Math.round(parseFloat(fxRes.rate)*1e5)/1e5; }
-    if(maj){ S.pxDate = today(); save(true); }
-    lastLiveRefresh = new Date();
-    const hh = String(lastLiveRefresh.getHours()).padStart(2,"0")+":"+String(lastLiveRefresh.getMinutes()).padStart(2,"0");
-    const el = document.getElementById("liveFoot");
-    if(el) el.textContent = "Cours en direct · "+hh+(echecs.length?(" · "+echecs.length+" valeur(s) manuelle(s)"):"");
-    render();
-  }catch(e){
-    const el = document.getElementById("liveFoot");
-    if(el) el.textContent = "Cours en direct indisponible (réessai automatique)";
+  }catch(e){ erreurReseau=true; }
+
+  for(let i=0;i<lignes.length;i+=TD_CHUNK){
+    const lot = lignes.slice(i, i+TD_CHUNK);
+    const symbols = lot.map(w=>TD_SYMBOL[w.tk]||w.tk);
+    try{
+      const prixRes = await fetch("https://api.twelvedata.com/price?symbol="+encodeURIComponent(symbols.join(","))+"&apikey="+TD_KEY).then(r=>r.json());
+      lot.forEach((w,j)=>{
+        const sym = symbols[j];
+        const entry = symbols.length>1 ? prixRes[sym] : prixRes;
+        const val = entry && parseFloat(entry.price);
+        if(val>0){ setPrice(w.tk, val, "USD"); maj++; } else { echecs.push(w.tk); }
+      });
+    }catch(e){ erreurReseau=true; lot.forEach(w=>echecs.push(w.tk)); }
+    if(maj){ S.pxDate = today(); save(true); render(); }
+    if(el) el.textContent = "Cours en direct · mise à jour en cours ("+Math.min(i+TD_CHUNK,lignes.length)+"/"+lignes.length+")";
+    if(i+TD_CHUNK < lignes.length) await sleep(TD_DELAY_MS);
   }
+
+  lastLiveRefresh = new Date();
+  const hh = String(lastLiveRefresh.getHours()).padStart(2,"0")+":"+String(lastLiveRefresh.getMinutes()).padStart(2,"0");
+  if(el){
+    if(erreurReseau && !maj) el.textContent = "Cours en direct indisponible (réessai automatique)";
+    else el.textContent = "Cours en direct · "+hh+(echecs.length?(" · "+echecs.length+" valeur(s) manuelle(s)"):"");
+  }
+  render();
 }
 
 /* branche la persistance (Firestore ou capacité Claude) une fois pour
