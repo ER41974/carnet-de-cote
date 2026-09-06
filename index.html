@@ -1,0 +1,2459 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carnet de Cote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
+<style>
+/* ============================ TOKENS ============================ */
+:root{
+  --paper:#F1F4F3;
+  --surface:#FFFFFF;
+  --surface-2:#F7F9F8;
+  --line:#DCE3E1;
+  --line-strong:#C3CECB;
+  --ink:#141A19;
+  --ink-2:#3E4A48;
+  --muted:#6B7A77;
+  --accent:#155E63;
+  --accent-soft:#DFECEC;
+  --gain:#186B45;
+  --gain-soft:#E0F0E8;
+  --loss:#B33A2B;
+  --loss-soft:#F8E5E1;
+  --warn:#966511;
+  --warn-soft:#F7EEDA;
+  --shadow:0 1px 2px rgba(20,26,25,.05), 0 6px 20px -10px rgba(20,26,25,.18);
+  --c1:#2F5FA8; --c2:#C4622D; --c3:#1E8F6E; --c4:#A8478E;
+  --c5:#7A8B2E; --c6:#2A86B0; --c7:#B33A3A; --c8:#6B5BC0;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F1413;
+    --surface:#171E1D;
+    --surface-2:#1D2524;
+    --line:#2A3432;
+    --line-strong:#3B4745;
+    --ink:#E8EDEB;
+    --ink-2:#BCC7C4;
+    --muted:#8C9996;
+    --accent:#5FB6B8;
+    --accent-soft:#17302F;
+    --gain:#4FBE86;
+    --gain-soft:#122C21;
+    --loss:#E1705B;
+    --loss-soft:#331914;
+    --warn:#D9A441;
+    --warn-soft:#2E2413;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --c1:#4A79C4; --c2:#DA7B45; --c3:#35A784; --c4:#C062A6;
+    --c5:#93A542; --c6:#45A0CA; --c7:#CE5A56; --c8:#8878DA;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F1413;
+  --surface:#171E1D;
+  --surface-2:#1D2524;
+  --line:#2A3432;
+  --line-strong:#3B4745;
+  --ink:#E8EDEB;
+  --ink-2:#BCC7C4;
+  --muted:#8C9996;
+  --accent:#5FB6B8;
+  --accent-soft:#17302F;
+  --gain:#4FBE86;
+  --gain-soft:#122C21;
+  --loss:#E1705B;
+  --loss-soft:#331914;
+  --warn:#D9A441;
+  --warn-soft:#2E2413;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --c1:#4A79C4; --c2:#DA7B45; --c3:#35A784; --c4:#C062A6;
+  --c5:#93A542; --c6:#45A0CA; --c7:#CE5A56; --c8:#8878DA;
+}
+
+/* ============================ BASE ============================ */
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.pos{color:var(--gain)} .neg{color:var(--loss)}
+.hide{display:none !important}
+
+/* ============================ SHELL ============================ */
+.app{max-width:1240px;margin:0 auto;padding:0 20px 72px}
+
+.topbar{
+  position:sticky;top:0;z-index:40;background:var(--paper);
+  border-bottom:1px solid var(--line);
+}
+.topbar-in{
+  max-width:1240px;margin:0 auto;padding:14px 20px 12px;
+  display:flex;align-items:flex-end;gap:24px;flex-wrap:wrap;
+}
+.brand{display:flex;flex-direction:column;gap:2px;margin-right:auto}
+.brand h1{
+  font-family:Fraunces,Georgia,serif;font-weight:700;font-size:23px;
+  letter-spacing:-.015em;line-height:1.05;
+}
+.brand .sub{font-size:11.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.hero-figure{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.hero-figure .v{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1}
+.hero-figure .d{font-size:12.5px;font-variant-numeric:tabular-nums;font-family:"IBM Plex Mono",monospace}
+.topactions{display:flex;gap:8px;align-items:center}
+
+.btn{
+  border:1px solid var(--line-strong);background:var(--surface);
+  padding:7px 13px;border-radius:8px;font-size:13px;font-weight:500;
+  display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s;
+}
+.btn:hover{background:var(--surface-2);border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+:root[data-theme="dark"] .btn.primary,
+:root:not([data-theme="light"]) .btn.primary{color:#08110F}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.ghost:hover{background:var(--surface-2);border-color:var(--line)}
+.btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+nav.views{
+  display:flex;gap:2px;padding:10px 0 0;flex-wrap:wrap;
+}
+nav.views button{
+  border:0;background:transparent;padding:8px 13px 11px;font-size:13.5px;font-weight:500;
+  color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+nav.views button[aria-current="true"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+nav.views button:hover{color:var(--ink)}
+
+/* ============================ CARDS ============================ */
+.panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+}
+.panel-head{
+  display:flex;align-items:baseline;gap:12px;padding:14px 16px 10px;flex-wrap:wrap;
+}
+.panel-head h2{font-size:14px;font-weight:600;letter-spacing:-.005em}
+.panel-head .note{font-size:12px;color:var(--muted);margin-left:auto}
+
+.grid{display:grid;gap:16px}
+.section{margin-top:20px}
+.eyebrow{
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  font-weight:600;margin:26px 0 10px;display:flex;align-items:center;gap:10px;
+}
+.eyebrow::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* KPI strip — one surface, hairline cells (not 4 floating cards) */
+.kpis{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+}
+.kpi{padding:14px 16px 15px;border-left:1px solid var(--line)}
+.kpi:first-child{border-left:0}
+.kpi .k{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .v{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:21px;font-weight:600;letter-spacing:-.02em;margin-top:5px;line-height:1.15}
+.kpi .m{font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ============================ TABLE ============================ */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:1240px}
+thead th{
+  position:sticky;top:0;background:var(--surface);z-index:2;
+  font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+  font-weight:600;text-align:right;padding:9px 10px;border-bottom:1px solid var(--line-strong);
+  white-space:nowrap;cursor:pointer;user-select:none;
+}
+thead th:first-child,thead th.l{text-align:left}
+thead th .arrow{opacity:.45;font-size:9px}
+tbody td{
+  padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+tbody td:first-child,tbody td.l{text-align:left}
+tbody tr:hover{background:var(--surface-2)}
+tfoot td{padding:10px;border-top:2px solid var(--line-strong);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+tfoot td.l{text-align:left}
+tbody tr.dim td{opacity:.55}
+.tick{font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.nm{font-weight:500}
+.cell-name{display:flex;flex-direction:column;gap:0px;min-width:150px}
+td .mono{font-family:"IBM Plex Mono",monospace}
+
+.pill{
+  display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;
+  font-size:11px;font-weight:600;letter-spacing:.01em;white-space:nowrap;
+}
+.pill.g{background:var(--gain-soft);color:var(--gain)}
+.pill.r{background:var(--loss-soft);color:var(--loss)}
+.pill.w{background:var(--warn-soft);color:var(--warn)}
+.pill.n{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.pill.a{background:var(--accent-soft);color:var(--accent)}
+.dot{width:8px;height:8px;border-radius:2px;display:inline-block;flex:none}
+
+.acct{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted);font-weight:500}
+
+/* severity rail on rows that need attention */
+tbody tr td:first-child{border-left:3px solid transparent;padding-left:9px}
+tbody tr.sev-w td:first-child{border-left-color:var(--warn)}
+tbody tr.sev-g td:first-child{border-left-color:var(--gain)}
+tbody tr.sev-r td:first-child{border-left-color:var(--loss)}
+
+/* ============================ CHARTS ============================ */
+.chart{width:100%;display:block;overflow:visible}
+.chart text{font-family:"IBM Plex Mono",monospace;font-size:10px;fill:var(--muted)}
+.gridline{stroke:var(--line);stroke-width:1}
+.axisline{stroke:var(--line-strong);stroke-width:1}
+.tip{
+  position:fixed;pointer-events:none;z-index:80;background:var(--surface);
+  border:1px solid var(--line-strong);border-radius:8px;padding:8px 10px;box-shadow:var(--shadow);
+  font-size:12px;min-width:120px;opacity:0;transition:opacity .1s;
+}
+.tip .t{font-weight:600;margin-bottom:4px;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.tip .row{display:flex;justify-content:space-between;gap:14px;font-variant-numeric:tabular-nums}
+
+.stack{display:flex;height:26px;border-radius:6px;overflow:hidden;gap:2px;background:transparent}
+.stack > span{display:block;height:100%;border-radius:2px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px}
+.legend .li{display:flex;align-items:center;gap:7px;font-size:12px}
+.legend .li .n{color:var(--muted);font-variant-numeric:tabular-nums}
+
+.barlist{display:flex;flex-direction:column;gap:9px}
+.barrow{display:grid;grid-template-columns:132px 1fr 76px;gap:10px;align-items:center;font-size:12.5px}
+.bartrack{height:9px;background:var(--surface-2);border-radius:2px;position:relative;border:1px solid var(--line)}
+.barfill{position:absolute;top:0;bottom:0;border-radius:2px}
+.barrow .val{text-align:right;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;font-size:12px}
+.barrow .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* ============================ FORMS ============================ */
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+input[type=text],input[type=number],input[type=date],select,textarea{
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:7px;
+  padding:7px 9px;font-size:13px;width:100%;
+}
+textarea{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.55;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+td input{padding:4px 6px;border-radius:5px;font-family:"IBM Plex Mono",monospace;font-size:12px;text-align:right;min-width:74px}
+td input.l{text-align:left}
+
+.modal-back{
+  position:fixed;inset:0;background:rgba(10,16,15,.5);z-index:90;
+  display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px 16px;overflow-y:auto;
+}
+.modal{
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:14px;
+  box-shadow:var(--shadow);width:100%;max-width:620px;padding:20px;
+  /* la modale ne dépasse jamais l'écran : c'est son contenu qui défile,
+     jamais les boutons de validation qui partent hors de vue */
+  max-height:88vh;display:flex;flex-direction:column;overflow:hidden;
+}
+.modal > *{flex:none}
+.modal .body{flex:1 1 auto;overflow-y:auto;margin:0 -20px;padding:0 20px}
+.modal h3{font-family:Fraunces,Georgia,serif;font-size:19px;font-weight:700;margin-bottom:4px}
+.modal .lead{color:var(--muted);font-size:13px;margin:0 0 16px}
+.modal .actions{
+  display:flex;gap:8px;justify-content:flex-end;align-items:center;
+  margin:16px -20px -20px;padding:14px 20px;
+  border-top:1px solid var(--line);background:var(--surface-2);
+}
+.modal .actions .hint{margin-right:auto;font-size:12px;color:var(--muted)}
+.form2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(8px);
+  background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:9px;font-size:13px;
+  z-index:100;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;box-shadow:var(--shadow);
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:13px}
+.callout{
+  display:flex;gap:11px;padding:12px 14px;border-radius:var(--r);font-size:12.5px;line-height:1.5;
+  background:var(--warn-soft);border:1px solid var(--line);color:var(--ink-2);
+}
+.callout b{color:var(--ink)}
+.callout.a{background:var(--accent-soft)}
+
+.filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:6px 12px;font-size:12.5px;color:var(--muted);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+:root[data-theme="dark"] .seg button[aria-pressed="true"],
+:root:not([data-theme="light"]) .seg button[aria-pressed="true"]{color:#08110F}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .seg button[aria-pressed="true"]{color:#fff}}
+.search{max-width:210px}
+
+footer.foot{
+  margin-top:36px;padding-top:16px;border-top:1px solid var(--line);
+  display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);align-items:center;
+}
+
+@media (max-width:860px){
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi:nth-child(3){border-left:0}
+  .kpi:nth-child(n+3){border-top:1px solid var(--line)}
+  .two{grid-template-columns:1fr !important}
+  .form2{grid-template-columns:1fr}
+  .hero-figure{align-items:flex-start}
+  .brand h1{font-size:20px}
+  .barrow{grid-template-columns:104px 1fr 66px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <h1>Carnet de Cote</h1>
+      <span class="sub" id="brandsub">Trade Republic &middot; Boursorama</span>
+    </div>
+    <div class="hero-figure">
+      <span class="v num" id="heroVal">—</span>
+      <span class="d" id="heroDelta">&nbsp;</span>
+    </div>
+    <div class="topactions">
+      <button class="btn primary" id="btnImportTR" title="Rejouer l'export de transactions Trade Republic">Import Trade Republic</button>
+      <button class="btn" id="btnGF" title="Coller la page Google Finance pour actualiser les cours">Actualiser les cours</button>
+      <button class="btn" id="btnSnap" title="Figer la valeur du jour dans l'historique">Point du jour</button>
+      <button class="btn ghost" id="btnTheme" title="Thème clair / sombre" aria-label="Basculer le thème clair ou sombre">Thème</button>
+    </div>
+  </div>
+  <div class="topbar-in" style="padding-top:0;padding-bottom:0">
+    <nav class="views" id="nav">
+      <button data-v="synth" aria-current="true">Synthèse</button>
+      <button data-v="pf">Portefeuilles</button>
+      <button data-v="real">Gains encaissés</button>
+      <button data-v="journal">Journal</button>
+      <button data-v="wl">Prix conseillés</button>
+      <button data-v="alloc">Allocation &amp; risque</button>
+      <button data-v="hist">Historique</button>
+      <button data-v="param">Paramètres</button>
+    </nav>
+  </div>
+</div>
+
+<div class="app">
+  <div id="view"></div>
+  <footer class="foot">
+    <span id="syncState">Stockage local</span>
+    <span>·</span>
+    <span id="liveFoot"></span>
+    <span>·</span>
+    <span id="fxFoot"></span>
+    <span>·</span>
+    <span id="cntFoot"></span>
+    <span>·</span>
+    <span id="verFoot" title="version de la page — utile si l'affichage semble figé"></span>
+    <span style="margin-left:auto"><button class="btn ghost sm" id="btnExport">Exporter en CSV</button></span>
+  </footer>
+</div>
+
+<div class="tip" id="tip"></div>
+<div class="toast" id="toast"></div>
+<div id="modalRoot"></div>
+
+<script>
+"use strict";
+
+/* ================================================================
+   1. DONNÉES DE DÉPART — importées du Google Sheet « BOURSE »,
+      feuille de consolidation (col. A-D, F-H + quantités).
+   ================================================================ */
+
+const SECTORS = {
+  NVDA:"Semi-conducteurs", AMD:"Semi-conducteurs", INTC:"Semi-conducteurs",
+  QCOM:"Semi-conducteurs", ARM:"Semi-conducteurs", AVGO:"Semi-conducteurs", MU:"Semi-conducteurs",
+  MSFT:"Logiciel & IA", PLTR:"Logiciel & IA", SMCI:"Logiciel & IA",
+  GOOGL:"Internet", META:"Internet", TCEHY:"Internet",
+  BYDDF:"Automobile", XPEV:"Automobile", CATL:"Automobile", P911:"Automobile", TSLA:"Automobile",
+  AAPL:"Tech grand public", XIACF:"Tech grand public",
+  ANET:"Réseau & infra", BLK:"Réseau & infra",
+  SPCX:"Espace", "688836":"Espace",
+  PUST:"ETF", ".INX":"Indice", ".IXIC":"Indice"
+};
+const SECTOR_ORDER = ["Semi-conducteurs","Logiciel & IA","Internet","Automobile","Tech grand public","Réseau & infra","Espace","ETF","Indice","Autre"];
+const CVARS = ["--c1","--c2","--c3","--c4","--c5","--c6","--c7","--c8"];
+
+/* Watchlist : colonnes A, B, C, D, F, G, H de la feuille de consolidation */
+const SEED_WL = [
+ ["Palantir","PLTR",76.41,88.48,179.92,155.38],
+ ["Super Micro Computer","SMCI",15.96,18.48,36.71,31.70],
+ ["Microsoft","MSFT",223.47,258.76,501.02,432.68],
+ ["Micron Technology","MU",470.55,544.86,933.44,806.12],
+ ["Arista Networks","ANET",99.81,115.58,189.26,163.44],
+ ["BlackRock","BLK",596.96,691.24,1128.10,974.23],
+ ["NVIDIA","NVDA",115.67,133.94,217.44,187.78],
+ ["Apple","AAPL",174.38,201.92,325.13,280.78],
+ ["Xiaomi","XIACF",1.89,2.19,3.50,3.02],
+ ["AMD","AMD",257.65,298.34,459.61,396.92],
+ ["S&P 500",".INX",4385.73,5078.39,7631.47,6590.54],
+ ["Nasdaq Composite",".IXIC",15237.56,17644.10,26099.77,22539.76],
+ ["Porsche AG","P911",24.83,28.75,51.11,44.15],
+ ["CATL","CATL",61.00,70.88,75.26,65.01],
+ ["Amundi PEA Nasdaq-100","PUST",65.44,75.78,117.00,101.04],
+ ["Meta Platforms","META",324.99,376.32,578.54,499.63],
+ ["Tencent","TCEHY",31.81,36.83,56.09,48.44],
+ ["BYD Company","BYDDF",6.33,7.32,11.17,9.65],
+ ["Qualcomm","QCOM",95.36,110.42,166.61,143.88],
+ ["Alphabet","GOOGL",196.29,227.29,335.02,289.32],
+ ["Tesla","TSLA",211.33,244.71,356.09,307.52],
+ ["Intel","INTC",52.77,61.10,88.97,76.83],
+ ["SpaceX (non coté)","SPCX",114.00,99.28,142.23,122.83],
+ ["Xpeng (ADR)","XPEV",7.26,8.41,11.17,9.65],
+ ["ARM Holdings","ARM",157.43,182.29,234.82,202.79],
+ ["Broadcom","AVGO",209.58,242.67,369.68,319.26],
+ ["Unitree Robotics","688836",63.65,73.70,81.89,70.72],
+ ["ASML Holding","ASML",864.92,1005.00,1714.88,1475.86]
+].map(r=>({name:r[0],tk:r[1],recoEur:r[2],recoUsd:r[3],pxUsd:r[4],pxEur:r[5]}));
+
+/* Positions reconstruites depuis l'export officiel Trade Republic
+   (100 opérations de bourse, mars 2024 → juillet 2026), méthode du prix
+   moyen pondéré, frais d'ordre inclus. Chez Trade Republic tout se règle
+   en euros : le prix de revient EST en euros, il n'y a aucune conversion
+   à faire. `cur` ne sert qu'à afficher le cours dans sa devise de cotation.
+   Boursorama n'a pas d'export : ces trois lignes viennent de Google Finance,
+   dont les prix en dollars ont été ramenés en euros au taux de leur mois. */
+const SEED_POS = [
+ ["Xiaomi","XIACF","TR",2419.4666,4.2231,"USD"],
+ ["BYD Company","BYDDF","TR",549,11.4253,"USD"],
+ ["Meta Platforms","META","TR",10,559.6800,"USD"],
+ ["Super Micro Computer","SMCI","TR",130,33.9175,"USD"],
+ ["Qualcomm","QCOM","TR",25,150.5304,"USD"],
+ ["Palantir","PLTR","TR",22,132.5284,"USD"],
+ ["Xpeng (ADR)","XPEV","TR",280,12.4330,"USD"],
+ ["Arista Networks","ANET","TR",14,115.0385,"USD"],
+ ["Microsoft","MSFT","TR",4,402.8333,"USD"],
+ ["ARM Holdings","ARM","TR",6,107.0737,"USD"],
+ ["SpaceX (non coté)","SPCX","TR",9,110.3111,"USD"],
+ ["Tencent","TCEHY","TR",21,48.2176,"USD"],
+ ["CATL","CATL","TR",14,71.7614,"EUR"],
+ ["Amundi PEA Nasdaq-100","PUST","TR",2,63.1342,"EUR"],
+ ["Microsoft","MSFT","BOURSO",1,253.7700,"USD"],
+ ["Alphabet","GOOGL","BOURSO",1,94.1700,"USD"],
+ ["Porsche AG","P911","BOURSO",6,85.3900,"EUR"]
+].map((r,i)=>({id:"p"+i,name:r[0],tk:r[1],acct:r[2],qty:r[3],pru:r[4],cur:r[5],ok:true}));
+
+/* Ordres limites de vente notés dans le Sheet BOURSE, repris tels quels.
+   [ticker, compte, prix cible dans la devise de cotation, nombre de titres] */
+const SEED_ORDERS = [["MSFT","TR",509,1],["XIACF","TR",3.90,60],["QCOM","TR",200,5],
+                     ["SPCX","TR",160,9],["ARM","TR",160,1],["P911","BOURSO",125,4]];
+SEED_ORDERS.forEach(o=>{
+  const p = SEED_POS.find(x=>x.tk===o[0] && x.acct===o[1]);
+  if(p){ p.ordre=o[2]; p.ordreQty=o[3]; p.ordreSrc="Sheet"; }
+});
+
+/* Plus-values encaissées, nettes de frais et de taxes.
+   Les lignes Trade Republic viennent de l'export du courtier ; les trois
+   lignes Boursorama sont reconstituées depuis Google Finance.
+   [ticker, nom, compte, titres vendus, produit €, PV €] */
+const SEED_REAL = [
+ ["AMD","AMD","TR",36,5700.12,1788.94],
+ ["ARM","ARM Holdings","TR",26,4556.00,1583.44],
+ ["NVDA","NVIDIA","TR",30,4825.48,1466.76],
+ ["GOOGL","Alphabet","TR",22,5063.00,1338.32],
+ ["TSLA","Tesla","BOURSO",9,2974.67,1259.36],
+ ["INTC","Intel","TR",124,3459.52,1045.59],
+ ["PUST","Amundi PEA Nasdaq-100","TR",17,1526.48,453.20],
+ ["ANET","Arista Networks","TR",12,1813.36,432.90],
+ ["XIACF","Xiaomi","TR",200,922.52,255.80],
+ ["PLTR","Palantir","TR",6,1019.48,221.11],
+ ["AAPL","Apple","TR",3,797.00,166.60],
+ ["SMCI","Super Micro Computer","TR",17,730.34,153.74],
+ ["MSFT","Microsoft","BOURSO",1,347.55,93.78],
+ ["BYDDF","BYD Company","TR",7,315.10,97.40],
+ ["GOOGL","Alphabet","BOURSO",1,125.16,30.99],
+ ["MSFT","Microsoft","TR",2,823.20,17.53]
+].map(r=>({tk:r[0],name:r[1],acct:r[2],qty:r[3],prodEur:r[4],gainEur:r[5]}));
+
+/* Revenus encaissés hors plus-values, relevés dans l'export Trade Republic. */
+const SEED_INCOME = {dividendes:121.70, interets:141.85, frais:99.00, versements:37990.87};
+
+const SEED_FLAGS = [
+ {tk:"XPEV", txt:"L'export Trade Republic donne 280 titres Xpeng (66 + 158 + 56). Ton portefeuille Google Finance n'en compte que 225 : le dernier achat du 26/06/2026 y est saisi 1 titre au lieu de 56. Vérifie dans l'application, l'écart vaut environ 530 €."},
+ {tk:"SMCI", txt:"Vente de 17 titres Super Micro le 01/06/2026 à 43,02 € : elle est absente de ton portefeuille Google Finance, alors que la quantité y est juste. Elle est bien comptée ici, +154 € encaissés."},
+ {tk:"BYDDF", txt:"Attribution d'actions gratuites le 29/07/2025 : 6 titres reçus pour 3 détenus. Ils entrent en quantité sans coût, ce qui abaisse mécaniquement le prix de revient — c'est correct et c'est bien le « split » dont tu parlais."},
+ {tk:"BOURSO", txt:"Boursorama n'a pas d'export : les trois lignes viennent de Google Finance, dont les prix en dollars ont été ramenés en euros au taux du mois d'achat. Porsche, coté en euros, est exact ; Microsoft et Alphabet sont à ±2 % près."}
+];
+
+/* Journal des opérations : une ligne par mouvement, au format
+   date|compte|ticker|type|titres|prix unitaire €|montant €
+   Types : A achat · V vente · G titres gratuits · D dividende net.
+   Trade Republic vient de l'export du courtier ; Boursorama de Google Finance.
+   Les montants sont nets : frais d'ordre ajoutés aux achats, déduits des ventes. */
+const SEED_TXN = `2021-02-25|BOURSO|TSLA|A|6|186.08|1116.48
+2022-07-30|BOURSO|P911|A|6|85.39|512.34
+2023-02-13|BOURSO|MSFT|A|2|253.77|507.54
+2023-02-15|BOURSO|GOOGL|A|2|94.17|188.34
+2023-10-22|BOURSO|TSLA|A|3|199.62|598.86
+2024-03-20|TR|AMD|A|2|165|331
+2024-03-27|TR|ARM|A|2|114|229
+2024-04-02|TR|XIACF|A|0.466597|1.944|0.91
+2024-04-02|TR|XIACF|A|129|1.944|251.78
+2024-06-04|TR|INTC|A|6|28.36|171.16
+2024-07-09|BOURSO|TSLA|V|2|242.46|484.92
+2024-07-22|TR|QCOM|A|2|174.98|350.96
+2024-07-25|TR|NVDA|A|2|104.3|209.6
+2024-08-05|TR|INTC|A|15|18.3|275.5
+2024-09-05|TR|NVDA|A|8|96.2|770.6
+2024-09-06|TR|QCOM|A|5|145.98|730.9
+2024-09-11|BOURSO|GOOGL|V|1|125.16|125.16
+2024-09-12|TR|INTC|D|0|0|2.03
+2024-09-15|BOURSO|MSFT|V|1|347.55|347.55
+2024-09-26|TR|QCOM|D|0|0|1.29
+2024-10-03|TR|NVDA|D|0|0|0.07
+2024-11-05|TR|NVDA|V|5|128|639
+2024-11-05|TR|XIACF|V|60|3.3|197
+2024-11-10|BOURSO|TSLA|V|3|319.57|958.71
+2024-11-26|TR|BYDDF|A|10|31|311
+2024-11-29|TR|QCOM|A|10|149.46|1495.6
+2024-12-08|BOURSO|TSLA|V|1|382.76|382.76
+2024-12-08|BOURSO|TSLA|V|3|382.76|1148.28
+2024-12-09|TR|XIACF|V|60|3.7|221
+2024-12-11|TR|INTC|A|53|19.258|1021.67
+2024-12-16|TR|QCOM|A|8|148.1|1185.8
+2024-12-18|TR|AMD|A|7|118.96|833.72
+2024-12-18|TR|INTC|A|50|18.892|945.6
+2024-12-19|TR|NVDA|A|11|125|1376
+2024-12-19|TR|QCOM|D|0|0|11.7
+2024-12-27|TR|NVDA|D|0|0|0.04
+2025-01-07|TR|MSFT|A|3|409|1228
+2025-01-21|TR|ARM|V|1|150|149
+2025-01-27|TR|AAPL|A|3|209.8|630.4
+2025-01-27|TR|MSFT|A|3|396|1189
+2025-01-27|TR|NVDA|A|9|111.28|1002.52
+2025-02-07|TR|BYDDF|V|4|40.26|160.04
+2025-02-13|TR|AAPL|D|0|0|0.61
+2025-02-14|TR|INTC|V|10|24|239
+2025-02-24|TR|GOOGL|A|6|172.5|1036
+2025-02-24|TR|INTC|V|45|23.7|1065.5
+2025-02-25|TR|AMD|A|12|100.08|1201.96
+2025-02-25|TR|AMD|A|15|102.9|1544.5
+2025-02-25|TR|GOOGL|A|16|167.98|2688.68
+2025-02-27|TR|ARM|A|4|129|517
+2025-03-03|TR|ARM|A|10|125|1251
+2025-03-05|TR|ARM|A|5|112|561
+2025-03-07|TR|PUST|A|3|74.01|223.03
+2025-03-13|TR|MSFT|D|0|0|2.52
+2025-03-17|TR|GOOGL|D|0|0|2.22
+2025-03-27|TR|QCOM|D|0|0|10.84
+2025-04-01|TR|XIACF|A|370|5.492|2033.04
+2025-04-02|TR|NVDA|D|0|0|0.13
+2025-04-07|TR|PUST|A|16|60.97|976.52
+2025-05-15|TR|AAPL|D|0|0|0.4
+2025-05-21|TR|BYDDF|V|3|52.02|155.06
+2025-06-06|TR|MSFT|V|2|412.1|823.2
+2025-06-12|TR|MSFT|D|0|0|2.4
+2025-06-16|TR|GOOGL|D|0|0|2.21
+2025-06-25|TR|AMD|V|3|121|362
+2025-06-25|TR|AMD|V|6|120.3|720.8
+2025-06-25|TR|ARM|V|1|137.2|136.2
+2025-06-26|TR|QCOM|D|0|0|10.54
+2025-06-26|TR|XIACF|V|80|6.319|504.52
+2025-06-27|TR|ARM|V|2|139|277
+2025-07-03|TR|NVDA|D|0|0|0.11
+2025-07-09|TR|NVDA|V|5|137|684
+2025-07-15|TR|AMD|V|3|129.02|386.06
+2025-07-15|TR|AMD|V|3|129.02|386.06
+2025-07-18|TR|PUST|V|5|80.24|400.2
+2025-07-28|TR|AMD|V|6|148|887
+2025-07-28|TR|NVDA|V|5|151|754
+2025-07-29|TR|BYDDF|D|0|0|0.85
+2025-07-29|TR|BYDDF|G|-2.4|0|0
+2025-07-29|TR|BYDDF|G|2.4|0|0
+2025-07-29|TR|BYDDF|G|2.4|0|0
+2025-07-29|TR|BYDDF|G|3.6|0|0
+2025-08-12|TR|BYDDF|D|0|0|-0.85
+2025-08-12|TR|BYDDF|D|0|0|0.83
+2025-08-14|TR|AAPL|D|0|0|0.37
+2025-09-01|TR|PLTR|A|16|133|2129
+2025-09-04|TR|BYDDF|A|259|11.6|3005.4
+2025-09-04|TR|GOOGL|V|8|199|1591
+2025-09-11|TR|MSFT|D|0|0|1.57
+2025-09-15|TR|GOOGL|D|0|0|1.38
+2025-09-18|TR|INTC|V|10|24.72|246.2
+2025-09-18|TR|INTC|V|10|28|279
+2025-09-18|TR|INTC|V|13|27|350
+2025-09-22|TR|PUST|V|5|85|424
+2025-09-25|TR|QCOM|D|0|0|10.42
+2025-10-02|TR|NVDA|D|0|0|0.07
+2025-10-06|TR|AMD|V|12|194.1|2328.2
+2025-10-10|TR|BYDDF|A|89|11.335|1009.82
+2025-10-13|TR|ARM|V|6|151|905
+2025-10-14|TR|ARM|V|3|155.6|465.8
+2025-10-17|TR|BYDDF|A|100|11.495|1150.5
+2025-10-17|TR|XIACF|A|700|5.014|3510.8
+2025-10-20|TR|AMD|V|2|208|415
+2025-10-22|TR|GOOGL|V|4|221|883
+2025-10-23|TR|INTC|V|26|35.07|910.82
+2025-10-24|TR|AMD|V|1|216|215
+2025-10-28|TR|NVDA|V|7|170|1189
+2025-10-29|TR|PLTR|V|6|170.08|1019.48
+2025-10-31|TR|BYDDF|A|92|11.005|1013.46
+2025-10-31|TR|META|A|2|565.8|1132.6
+2025-10-31|TR|XIACF|A|210|4.799|1008.79
+2025-11-03|TR|META|A|8|557.9|4464.2
+2025-11-07|TR|ANET|A|26|115|2991
+2025-11-07|TR|SMCI|A|87|35.01|3046.87
+2025-11-13|TR|AAPL|D|0|0|0.37
+2025-11-13|TR|SMCI|A|60|32.3|1939
+2025-11-19|TR|GOOGL|V|10|259|2589
+2025-11-20|TR|XIACF|A|250|4.16|1041
+2025-11-21|TR|PLTR|A|12|132|1585
+2025-12-02|TR|INTC|V|10|37|369
+2025-12-11|TR|MSFT|D|0|0|1.72
+2025-12-18|TR|QCOM|D|0|0|10.44
+2025-12-22|TR|ARM|A|11|96|1057
+2025-12-23|TR|META|D|0|0|2.46
+2025-12-24|TR|NVDA|D|0|0|0.03
+2026-01-30|TR|XPEV|A|66|15.2|1004.2
+2026-02-12|TR|AAPL|D|0|0|0.36
+2026-03-12|TR|MSFT|D|0|0|1.68
+2026-03-26|TR|META|D|0|0|2.43
+2026-03-26|TR|QCOM|D|0|0|10.28
+2026-04-01|TR|NVDA|D|0|0|0.03
+2026-04-22|TR|ANET|V|9|150|1349
+2026-04-22|TR|ARM|V|10|168|1679
+2026-04-27|TR|XIACF|A|600|3.38|2029
+2026-05-07|TR|PUST|V|5|98|489
+2026-05-14|TR|AAPL|D|0|0|0.38
+2026-05-14|TR|NVDA|V|8|195.06|1559.48
+2026-05-19|TR|CATL|A|14|71.69|1004.66
+2026-05-22|TR|AAPL|V|3|266|797
+2026-05-22|TR|TCEHY|A|21|48.17|1012.57
+2026-05-28|TR|ARM|V|2|291|581
+2026-06-01|TR|SMCI|V|17|43.02|730.34
+2026-06-11|TR|MSFT|D|0|0|1.69
+2026-06-16|TR|ARM|V|1|364|363
+2026-06-16|TR|XIACF|A|360|2.8|1009
+2026-06-16|TR|XPEV|A|158|12|1897
+2026-06-22|TR|PUST|V|2|107.14|213.28
+2026-06-25|TR|META|D|0|0|2.49
+2026-06-25|TR|QCOM|D|0|0|10.88
+2026-06-26|TR|XPEV|A|56|10.34|580.04
+2026-07-06|TR|ANET|V|3|155.12|464.36
+2026-07-17|TR|SPCX|A|9|110.2|992.8
+2026-07-31|TR|BYDDF|D|0|0|14.71`.trim().split("\n").map(l=>{
+  const [d,acct,tk,type,qty,px,amt] = l.split("|");
+  return {d, acct, tk, type, qty:+qty, px:+px, amt:+amt};
+});
+
+const TXN_LABEL  = {A:"Achat", V:"Vente", G:"Titres gratuits", D:"Dividende"};
+const TXN_PLURAL = {A:"Achats", V:"Ventes", G:"Titres gratuits", D:"Dividendes"};
+
+const ACCOUNTS = {
+  TR:{label:"Trade Republic",short:"TR"},
+  BOURSO:{label:"Boursorama",short:"BOURSO"}
+};
+
+const DEFAULT_STATE = {
+  v:11,
+  fx:0.8638,                      /* 1 USD = 0,8638 EUR au 01/09/2026 (BCE : 1 € = 1,159 $) */
+  pxDate:"2026-09-01",
+  positions:SEED_POS,
+  realised:SEED_REAL,
+  income:SEED_INCOME,
+  txn:SEED_TXN,
+  flags:SEED_FLAGS,
+  watchlist:SEED_WL,
+  /* premier repère : clôture du 1ᵉʳ septembre 2026, relevée sur les deux comptes */
+  history:[{d:"2026-09-01",total:40909.70,tr:39922.63,pea:987.07}],
+  seeded:true
+};
+/* Fusionne l'historique par date plutôt que de le remplacer : un relevé
+   enregistré ici ne peut plus être effacé par une version reçue d'ailleurs.
+   À date égale, le point le plus récemment écrit gagne. */
+function mergeHistory(a, b){
+  const m = new Map();
+  (a||[]).forEach(p=>{ if(p && p.d) m.set(p.d, p); });
+  (b||[]).forEach(p=>{ if(p && p.d) m.set(p.d, p); });
+  return degeler([...m.values()]).sort((x,y)=> x.d<y.d ? -1 : (x.d>y.d ? 1 : 0));
+}
+
+/* Prépare un état reçu (stockage local ou base distante) pour l'affichage.
+   Les données saisies par Éric survivent aux mises à jour de la page :
+   on part du modèle, on applique ce qui est stocké, et on ne retombe sur
+   le contenu d'origine que pour les rubriques réellement absentes. */
+/* Ce que la base de données renvoie est GELÉ : ses objets et ses tableaux
+   sont en lecture seule. Sans copie profonde, la première écriture d'un
+   cours lève « Cannot assign to read only property » — et, avant que la
+   page ne rapporte ses erreurs, elle échouait en silence. On recopie donc
+   tout ce qui entre, d'où qu'il vienne, avant de le confier à l'état. */
+function degeler(x){
+  try{ return x==null ? x : JSON.parse(JSON.stringify(x)); }
+  catch(e){ return x; }
+}
+
+function normalize(d, base){
+  const seed = JSON.parse(JSON.stringify(DEFAULT_STATE));
+  if(!d || typeof d !== "object") return seed;
+  d = degeler(d);
+  const out = Object.assign({}, seed, d);   /* jamais sur `seed` : il reste la référence */
+  ["positions","watchlist","realised","txn","flags"].forEach(k=>{
+    if(!Array.isArray(d[k]) || !d[k].length) out[k] = seed[k];
+  });
+  out.history = mergeHistory(base && base.history, d.history);
+  if(!out.history.length) out.history = seed.history;
+  out.v = DEFAULT_STATE.v;
+  return out;
+}
+
+/* ================================================================
+   2. ÉTAT + PERSISTANCE
+   ================================================================ */
+const APP_VERSION = "12-web";   /* affiché en pied de page */
+const LS_KEY = "carnet-de-cote-v1";
+let S = null;          // état courant
+let DB = null;         // capacité db (sync multi-appareils)
+let SAMPLE = null;     // capacité sample (analyse de collage)
+let DL = null;         // capacité downloads (enregistrement de fichier)
+let saveTimer = null;
+let pending = 0;        // écritures locales pas encore confirmées par la base
+let lastSaved = null;   // horodatage de la dernière écriture confirmée
+
+function loadLocal(){
+  try{ const raw = localStorage.getItem(LS_KEY); if(raw) return JSON.parse(raw); }catch(e){}
+  return null;
+}
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){}
+}
+
+/* `now` force l'écriture immédiate : un geste délibéré d'Éric — enregistrer
+   un point du jour, importer un relevé — ne doit pas attendre un délai
+   pendant lequel une version reçue d'ailleurs pourrait le recouvrir. */
+function save(now){
+  saveLocal();
+  pending++;
+  clearTimeout(saveTimer);
+  const write = ()=>{
+    if(!DB){ pending = 0; return; }
+    const mine = pending;
+    setSync("Enregistrement…");
+    DB.doc("portfolio/state").set(JSON.parse(JSON.stringify(S)))
+      .then(()=>{
+        pending = Math.max(0, pending - mine);
+        lastSaved = new Date();
+        if(!pending) setSync("Enregistré · synchronisé sur tous tes appareils");
+      })
+      .catch(()=>{ pending = 0; setSync("Hors ligne — enregistré sur cet appareil"); });
+  };
+  if(now) write(); else saveTimer = setTimeout(write, 700);
+}
+function setSync(t){ const el=document.getElementById("syncState"); if(el) el.textContent=t; }
+
+/* ================================================================
+   3. CALCUL
+   ================================================================ */
+const PALIERS = [20,50,100,200];
+
+function px(tk){
+  const w = S.watchlist.find(x=>x.tk===tk);
+  return w || null;
+}
+function priceEur(tk,cur){
+  const w = px(tk);
+  if(!w) return 0;
+  /* une seule source de vérité par ligne : le cours dans sa devise de cotation,
+     converti au taux courant — pas de valeur euro stockée qui dériverait. */
+  if(cur==="EUR") return w.pxEur || 0;
+  return (w.pxUsd||0)*S.fx;
+}
+function priceNative(tk,cur){
+  const w = px(tk); if(!w) return 0;
+  return cur==="EUR" ? (w.pxEur||0) : (w.pxUsd||0);
+}
+/* Chez Trade Republic les ordres se règlent en euros : le prix de revient
+   est déjà en euros, frais d'ordre compris. Rien à convertir. */
+function pruEur(p){ return p.pru; }
+
+function computed(){
+  const rows = S.positions.map(p=>{
+    const pn   = priceNative(p.tk,p.cur);
+    const pe   = priceEur(p.tk,p.cur);
+    const val  = p.qty*pe;
+    const cost = p.qty*pruEur(p);
+    const pl   = val-cost;
+    const perf = cost>0 ? pl/cost*100 : 0;
+    const w    = px(p.tk);
+    const reco = w ? (p.cur==="EUR" ? w.recoEur : w.recoUsd) : 0;
+    let palier = 0;
+    for(const t of PALIERS) if(perf>=t) palier=t;
+    /* ordre limite de vente : distance du cours à la cible */
+    let ordreGap = null, ordreState = null;
+    if(p.ordre>0 && pn>0){
+      ordreGap = (pn/p.ordre-1)*100;
+      ordreState = ordreGap>=0 ? "atteint" : (ordreGap>=-5 ? "proche" : "loin");
+    }
+    return {...p, pn, pe, val, cost, pl, perf, reco, ordreGap, ordreState,
+            ordreVal: p.ordre>0 ? (p.ordreQty||p.qty)*p.ordre*(p.cur==="EUR"?1:S.fx) : 0,
+            sector:SECTORS[p.tk]||"Autre", palier,
+            underReco: reco>0 && pn>0 && pn<reco};
+  });
+  const total = rows.reduce((a,r)=>a+r.val,0);
+  rows.forEach(r=> r.weight = total>0 ? r.val/total*100 : 0);
+  const cost  = rows.reduce((a,r)=>a+r.cost,0);
+  const byAcct = {};
+  for(const k in ACCOUNTS) byAcct[k]={val:0,cost:0,n:0};
+  rows.forEach(r=>{ const b=byAcct[r.acct]||(byAcct[r.acct]={val:0,cost:0,n:0}); b.val+=r.val; b.cost+=r.cost; b.n++; });
+  const realised = (S.realised||[]).reduce((a,r)=>a+r.gainEur,0);
+  const proceeds = (S.realised||[]).reduce((a,r)=>a+r.prodEur,0);
+  const inc = S.income||{};
+  const revenus = (inc.dividendes||0)+(inc.interets||0);
+  return {rows,total,cost,pl:total-cost,perf:cost>0?(total-cost)/cost*100:0,byAcct,
+          realised, proceeds, revenus, inc, net:(total-cost)+realised+revenus};
+}
+
+/* ================================================================
+   4. FORMATS
+   ================================================================ */
+const nfEur = new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0});
+const nfEur2= new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:2});
+const nfNum = new Intl.NumberFormat("fr-FR",{maximumFractionDigits:2});
+function eur(v,dec){ return (dec?nfEur2:nfEur).format(v||0); }
+const nfPx = new Intl.NumberFormat("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const nfFx = new Intl.NumberFormat("fr-FR",{minimumFractionDigits:4,maximumFractionDigits:5});
+function money(v,cur){ return nfPx.format(v||0)+" "+(cur==="EUR"?"€":"$"); }
+function pct(v,d){ const n=(v||0); return (n>0?"+":"")+n.toFixed(d===undefined?1:d)+" %"; }
+function sgn(v){ return v>0?"pos":(v<0?"neg":""); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function today(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function frDate(iso){ if(!iso) return "—"; const [y,m,d]=iso.split("-"); return d+"/"+m+"/"+y; }
+function cvar(i){ return "var("+CVARS[i%CVARS.length]+")"; }
+
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("on");
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("on"),2600);
+}
+
+/* ================================================================
+   5. GRAPHIQUES (SVG, une seule échelle, tokens de thème)
+   ================================================================ */
+function lineChart(points, opts){
+  /* points: [{d:"YYYY-MM-DD", total, tr, pea}] */
+  const W=760, H=230, mL=54, mR=14, mT=14, mB=26;
+  if(points.length<2){
+    const p0 = points[0];
+    return '<div class="empty">'+(p0
+      ? 'Un seul repère pour l\'instant : <b>'+eur(p0.total)+'</b> au '+frDate(p0.d)+
+        '. Clique sur <b>Point du jour</b> pour ajouter le deuxième et voir la courbe apparaître.'
+      : 'Aucun repère. Clique sur <b>Point du jour</b> pour figer la valeur d\'aujourd\'hui.')+'</div>';
+  }
+  const vals = points.map(p=>p.total);
+  let lo=Math.min(...vals), hi=Math.max(...vals);
+  const pad=(hi-lo)*0.12 || Math.max(hi*0.05,1);
+  lo=Math.max(0,lo-pad); hi=hi+pad;
+  const x=i=> mL + i*(W-mL-mR)/(points.length-1);
+  const y=v=> mT + (1-(v-lo)/(hi-lo||1))*(H-mT-mB);
+  const d = points.map((p,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(p.total).toFixed(1)).join(" ");
+  const area = d+" L"+x(points.length-1).toFixed(1)+" "+(H-mB)+" L"+mL+" "+(H-mB)+" Z";
+  const ticks=4, tk=[];
+  for(let i=0;i<=ticks;i++){ const v=lo+(hi-lo)*i/ticks; tk.push({v,y:y(v)}); }
+  const labIdx = points.length<=6 ? points.map((_,i)=>i)
+                : [0, Math.round((points.length-1)/2), points.length-1];
+  const last = points[points.length-1];
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="height:230px" id="histSvg">
+    <defs><linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--accent)" stop-opacity=".22"/>
+      <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+    </linearGradient></defs>
+    ${tk.map(t=>`<line class="gridline" x1="${mL}" x2="${W-mR}" y1="${t.y.toFixed(1)}" y2="${t.y.toFixed(1)}"/>
+      <text x="${mL-8}" y="${(t.y+3).toFixed(1)}" text-anchor="end">${Math.round(t.v/1000)}k</text>`).join("")}
+    <path d="${area}" fill="url(#ga)"/>
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(points.length-1).toFixed(1)}" cy="${y(last.total).toFixed(1)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/>
+    ${labIdx.map(i=>`<text x="${x(i).toFixed(1)}" y="${H-8}" text-anchor="${i===0?'start':(i===points.length-1?'end':'middle')}">${frDate(points[i].d).slice(0,5)}</text>`).join("")}
+    ${points.map((p,i)=>`<rect x="${(x(i)-8).toFixed(1)}" y="${mT}" width="16" height="${H-mT-mB}" fill="transparent" data-hi="${i}"/>`).join("")}
+  </svg>`;
+}
+
+function divergingBars(items){
+  /* items: [{label, tk, v}] v en % */
+  if(!items.length) return '<div class="empty">Aucune ligne.</div>';
+  const max = Math.max(...items.map(i=>Math.abs(i.v)),1);
+  return '<div class="barlist">'+items.map(i=>{
+    const w = Math.abs(i.v)/max*50;
+    const neg = i.v<0;
+    return `<div class="barrow">
+      <span class="lbl"><span class="tick">${esc(i.tk)}</span> ${esc(i.label)}</span>
+      <span class="bartrack">
+        <span style="position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:var(--line-strong)"></span>
+        <span class="barfill" style="${neg?`right:50%;width:${w}%;background:var(--loss)`:`left:50%;width:${w}%;background:var(--gain)`}"></span>
+      </span>
+      <span class="val ${sgn(i.v)}">${pct(i.v)}</span>
+    </div>`;
+  }).join("")+'</div>';
+}
+
+function stackedBar(groups, totalVal){
+  /* groups: [{label, val}] déjà triés. Au-delà de huit teintes, les
+     couleurs cesseraient d'identifier quoi que ce soit : le reste est regroupé. */
+  if(!groups.length || totalVal<=0) return '<div class="empty">Aucune donnée.</div>';
+  if(groups.length > 8){
+    const head = groups.slice(0,7);
+    const rest = groups.slice(7).reduce((a,g)=>a+g.val,0);
+    groups = head.concat([{label:"Autres ("+(groups.length-7)+")", val:rest}]);
+  }
+  const bar = groups.map((g,i)=>`<span title="${esc(g.label)}" style="width:${(g.val/totalVal*100).toFixed(2)}%;background:${cvar(i)}"></span>`).join("");
+  const leg = groups.map((g,i)=>`<span class="li"><span class="dot" style="background:${cvar(i)}"></span>${esc(g.label)} <span class="n">${(g.val/totalVal*100).toFixed(1)} %</span></span>`).join("");
+  return `<div class="stack">${bar}</div><div class="legend">${leg}</div>`;
+}
+
+/* ================================================================
+   6. VUES
+   ================================================================ */
+let view = "synth";
+let notice = null;          /* bandeau de résultat, affiché jusqu'à ce qu'Éric le referme */
+let sortKey = "val", sortDir = -1;
+let filterAcct = "ALL", filterText = "";
+
+function render(){
+  const el = document.getElementById("view");
+  const C = computed();
+  const corps = ({synth:vSynth, pf:vPf, real:vReal, journal:vJournal, wl:vWl, alloc:vAlloc, hist:vHist, param:vParam}[view])(C);
+  el.innerHTML = (notice ? `<div class="callout ${notice.kind==="ok"?"a":""}" style="margin-top:16px;align-items:flex-start">
+      <span>${notice.kind==="ok"?"✓":"!"}</span>
+      <div style="flex:1"><b>${esc(notice.titre)}</b>${notice.texte? " "+esc(notice.texte):""}</div>
+      <button class="btn ghost sm" id="noticeX" aria-label="Masquer ce message">×</button>
+    </div>` : "") + corps;
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-current", b.dataset.v===view?"true":"false"));
+
+  /* bandeau haut */
+  document.getElementById("heroVal").textContent = eur(C.total);
+  const hd = document.getElementById("heroDelta");
+  hd.className = "d "+sgn(C.pl);
+  hd.textContent = (C.pl>=0?"+":"")+eur(C.pl)+"  ·  "+pct(C.perf);
+  document.getElementById("fxFoot").textContent = "1 USD = "+nfFx.format(S.fx)+" €";
+  document.getElementById("cntFoot").textContent = S.positions.length+" lignes · cours du "+frDate(S.pxDate);
+  const vf=document.getElementById("verFoot");
+  if(vf) vf.textContent = "version "+APP_VERSION;
+  wire();
+}
+
+/* ---------- SYNTHÈSE ---------- */
+function vSynth(C){
+  const best = [...C.rows].sort((a,b)=>b.perf-a.perf)[0];
+  const worst= [...C.rows].sort((a,b)=>a.perf-b.perf)[0];
+  const alerts = C.rows.filter(r=>r.palier>0).sort((a,b)=>b.palier-a.palier||b.perf-a.perf);
+  const opport= S.watchlist
+    .filter(w=>(w.recoUsd||0)>0 && (w.pxUsd||0)>0)
+    .map(w=>({...w, ecart:(w.pxUsd/w.recoUsd-1)*100}))
+    .sort((a,b)=>a.ecart-b.ecart).slice(0,8);
+  const sectors = sectorGroups(C);
+  const gains = C.rows.filter(r=>r.perf>0).length;
+
+  return `
+  <div class="section kpis">
+    <div class="kpi"><div class="k">Résultat net depuis 2021</div><div class="v ${sgn(C.net)}">${(C.net>=0?"+":"")+eur(C.net)}</div>
+      <div class="m">latent ${(C.pl>=0?"+":"")+eur(C.pl)} · encaissé ${(C.realised>=0?"+":"")+eur(C.realised)} · revenus ${(C.revenus>=0?"+":"")+eur(C.revenus)}</div></div>
+    <div class="kpi"><div class="k">Valeur détenue</div><div class="v">${eur(C.total)}</div>
+      <div class="m">${Object.keys(C.byAcct).filter(k=>C.byAcct[k].n).map(k=>ACCOUNTS[k].short+" "+eur(C.byAcct[k].val)).join(" · ")}</div></div>
+    <div class="kpi"><div class="k">Plus-value latente</div><div class="v ${sgn(C.pl)}">${pct(C.perf)}</div>
+      <div class="m">${(C.pl>=0?"+":"")+eur(C.pl)} sur ${eur(C.cost)} investis</div></div>
+    <div class="kpi"><div class="k">Lignes en gain</div><div class="v">${gains} <span style="font-size:14px;color:var(--muted)">/ ${C.rows.length}</span></div>
+      <div class="m">${alerts.length} au-delà de +20 % sur leur cours d'achat</div></div>
+  </div>
+
+  <div class="callout a" style="margin-top:16px">
+    <span>✓</span><div><b>Google Finance affiche une perte de ${eur(9005)} qui n'existe pas.</b>
+    Il convertit tes prix d'achat en dollars puis les affiche avec un signe €, ce qui gonfle ton prix de revient d'environ 15 %.
+    SpaceX en est l'exemple : payé <b>110,20 €</b> le titre le 17/07/2026 d'après ton relevé Trade Republic, il y figure à « 125,56 € ».
+    Les chiffres ci-dessous viennent de l'export du courtier, en euros réels, frais d'ordre compris.</div>
+  </div>
+
+  <div class="eyebrow">Évolution du portefeuille</div>
+  <div class="panel">
+    <div class="panel-head"><h2>Valeur totale, en euros</h2>
+      <span class="note">${S.history.length} point${S.history.length>1?"s":""} enregistré${S.history.length>1?"s":""}</span></div>
+    <div style="padding:0 16px 16px">${lineChart(S.history)}</div>
+  </div>
+
+  <div class="section grid two" style="grid-template-columns:1fr 1fr">
+    <div class="panel">
+      <div class="panel-head"><h2>Répartition sectorielle</h2><span class="note">${eur(C.total)}</span></div>
+      <div style="padding:0 16px 18px">${stackedBar(sectors, C.total)}</div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Extrêmes du portefeuille</h2></div>
+      <div style="padding:0 16px 18px">
+        ${best? divergingBars([
+          {tk:best.tk,label:best.name,v:best.perf},
+          {tk:worst.tk,label:worst.name,v:worst.perf}
+        ]):'<div class="empty">Aucune position.</div>'}
+        <div style="margin-top:16px;font-size:12.5px;color:var(--muted);line-height:1.55">
+          ${best? `<b style="color:var(--ink)">${esc(best.name)}</b> pèse ${best.weight.toFixed(1)} % du portefeuille et porte ${(best.pl>=0?"+":"")+eur(best.pl)} de plus-value latente.` : ""}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="eyebrow">Ce qui demande une décision</div>
+  ${(function(){
+    const O = C.rows.filter(r=>r.ordreState).sort((a,b)=>b.ordreGap-a.ordreGap);
+    if(!O.length) return `<div class="panel"><div class="empty">Aucun ordre de vente posé.
+      Renseigne un prix cible et un nombre de titres dans la colonne <b>Ordre de vente</b> de l'onglet Portefeuilles.</div></div>`;
+    const hit = O.filter(r=>r.ordreState!=="loin");
+    return `<div class="panel">
+      <div class="panel-head"><h2>Ordres de vente posés</h2>
+        <span class="note">${hit.length? hit.length+" à portée" : "aucun à portée"} · ${eur(O.reduce((a,r)=>a+r.ordreVal,0))} si tout s'exécutait</span></div>
+      <div class="tablewrap"><table style="min-width:640px">
+        <thead><tr><th class="l">Valeur</th><th>Titres</th><th>Cible</th><th>Cours</th><th>Écart</th><th>Produit attendu</th><th class="l">État</th></tr></thead>
+        <tbody>${O.map(r=>`<tr class="sev-${r.ordreState==="atteint"?"g":(r.ordreState==="proche"?"w":"")}">
+          <td class="l"><div class="cell-name"><span class="nm">${esc(r.name)}</span><span class="tick">${esc(r.tk)} · ${ACCOUNTS[r.acct].short}</span></div></td>
+          <td class="mono">${nfNum.format(r.ordreQty||r.qty)}</td>
+          <td class="mono">${money(r.ordre,r.cur)}</td>
+          <td class="mono">${money(r.pn,r.cur)}</td>
+          <td class="mono ${r.ordreGap>=0?"pos":""}">${pct(r.ordreGap)}</td>
+          <td class="mono">${eur(r.ordreVal)}</td>
+          <td class="l">${r.ordreState==="atteint"?'<span class="pill g">cible dépassée</span>'
+            :r.ordreState==="proche"?'<span class="pill w">à portée</span>':'<span class="pill n">en attente</span>'}
+            ${r.ordreSrc?'<span class="pill n" title="repris du Google Sheet BOURSE, à confirmer">Sheet</span>':""}</td>
+        </tr>`).join("")}</tbody>
+      </table></div>
+    </div>`;
+  })()}
+
+  <div class="section grid two" style="grid-template-columns:1fr 1fr">
+    <div class="panel">
+      <div class="panel-head"><h2>Paliers franchis</h2><span class="note">vs prix de revient</span></div>
+      ${alerts.length? `<div class="tablewrap"><table style="min-width:0">
+        <thead><tr><th class="l">Valeur</th><th>Palier</th><th>Perf.</th><th>PV latente</th></tr></thead>
+        <tbody>${alerts.slice(0,8).map(r=>`<tr class="sev-${r.palier>=100?"g":"w"}">
+          <td class="l"><div class="cell-name"><span class="nm">${esc(r.name)}</span><span class="tick">${esc(r.tk)} · ${ACCOUNTS[r.acct].short}</span></div></td>
+          <td><span class="pill ${r.palier>=100?"g":"w"}">+${r.palier} %</span></td>
+          <td class="mono ${sgn(r.perf)}">${pct(r.perf)}</td>
+          <td class="mono ${sgn(r.pl)}">${(r.pl>=0?"+":"")+eur(r.pl)}</td>
+        </tr>`).join("")}</tbody></table></div>`
+      : '<div class="empty">Aucune ligne n\'a franchi +20 % sur son prix de revient.</div>'}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Les plus proches de ta cible</h2><span class="note">écart au prix conseillé</span></div>
+      ${opport.length? `<div class="tablewrap"><table style="min-width:0">
+        <thead><tr><th class="l">Valeur</th><th>Conseillé</th><th>Cours</th><th>Écart</th></tr></thead>
+        <tbody>${opport.slice(0,8).map(w=>{
+          const e=(w.pxUsd/w.recoUsd-1)*100;
+          return `<tr class="sev-${e<=0?"g":"w"}">
+          <td class="l"><div class="cell-name"><span class="nm">${esc(w.name)}</span><span class="tick">${esc(w.tk)}</span></div></td>
+          <td class="mono">${nfNum.format(w.recoUsd)} $</td>
+          <td class="mono">${nfNum.format(w.pxUsd)} $</td>
+          <td class="mono ${e<=0?"pos":""}">${pct(e)}</td></tr>`;
+        }).join("")}</tbody></table></div>`
+      : '<div class="empty">Aucune valeur suivie n\'est revenue à moins de 5 % de son prix conseillé.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ---------- PORTEFEUILLES ---------- */
+function vPf(C){
+  let rows = C.rows;
+  if(filterAcct!=="ALL") rows = rows.filter(r=>r.acct===filterAcct);
+  if(filterText){
+    const q=filterText.toLowerCase();
+    rows = rows.filter(r=>r.name.toLowerCase().includes(q)||r.tk.toLowerCase().includes(q));
+  }
+  rows = [...rows].sort((a,b)=>{
+    const va=a[sortKey], vb=b[sortKey];
+    if(typeof va==="string") return sortDir*va.localeCompare(vb,"fr");
+    return sortDir*((va||0)-(vb||0));
+  });
+  const sub = rows.reduce((a,r)=>a+r.val,0);
+  const subPl= rows.reduce((a,r)=>a+r.pl,0);
+
+  const th=(k,l,cls)=>`<th class="${cls||''}" data-sort="${k}">${l} <span class="arrow">${sortKey===k?(sortDir<0?"▼":"▲"):""}</span></th>`;
+
+  return `
+  <div class="section filters">
+    <div class="seg" id="acctSeg">
+      <button data-a="ALL" aria-pressed="${filterAcct==="ALL"}">Tout</button>
+      ${Object.keys(ACCOUNTS).map(k=>`<button data-a="${k}" aria-pressed="${filterAcct===k}">${ACCOUNTS[k].label}</button>`).join("")}
+    </div>
+    <input type="text" class="search" id="q" placeholder="Filtrer une valeur…" value="${esc(filterText)}">
+    <span style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn sm" id="btnAdd">+ Ligne</button>
+      <button class="btn sm" id="btnImportTR2">Import Trade Republic</button>
+    </span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>${filterAcct==="ALL"?"Toutes les positions":ACCOUNTS[filterAcct].label}</h2>
+      <span class="note">${rows.length} lignes · ${eur(sub)} · <span class="${sgn(subPl)}">${(subPl>=0?"+":"")+eur(subPl)}</span></span>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          ${th("name","Valeur","l")}${th("acct","Compte","l")}${th("qty","Qté")}${th("pru","PRU")}
+          ${th("pn","Cours")}${th("val","Valeur €")}${th("pl","PV latente")}${th("perf","Perf.")}
+          ${th("weight","Poids")}<th>Palier</th><th class="l">Ordre de vente</th><th></th>
+        </tr></thead>
+        <tbody>
+        ${rows.length? rows.map(r=>`<tr data-id="${r.id}" class="${r.ok?"":"dim"} ${r.palier>=100?"sev-g":(r.palier>0?"sev-w":(r.perf<-15?"sev-r":""))}">
+          <td class="l"><div class="cell-name"><span class="nm">${esc(r.name)}</span><span class="tick">${esc(r.tk)} · ${r.sector}</span></div></td>
+          <td class="l"><span class="acct">${ACCOUNTS[r.acct]?ACCOUNTS[r.acct].short:r.acct}</span></td>
+          <td><input type="number" step="any" data-f="qty" value="${r.qty}"></td>
+          <td><span style="display:inline-flex;align-items:center;gap:6px"><input type="number" step="any" data-f="pru" value="${(+r.pru).toFixed(2)}"><span class="tick">${r.cur==="EUR"?"€":"$"}</span></span></td>
+          <td class="mono">${money(r.pn,r.cur)}</td>
+          <td class="mono">${eur(r.val)}</td>
+          <td class="mono ${sgn(r.pl)}">${(r.pl>=0?"+":"")+eur(r.pl)}</td>
+          <td class="mono ${sgn(r.perf)}" title="prix de revient converti au taux du mois de l'achat : ${nfNum.format(r.pruEur||0)} €">${pct(r.perf)}</td>
+          <td class="mono">${r.weight.toFixed(1)} %</td>
+          <td>${r.palier?`<span class="pill ${r.palier>=100?"g":"w"}">+${r.palier} %</span>`:""}</td>
+          <td class="l"><span style="display:inline-flex;align-items:center;gap:6px">
+            <input type="number" step="any" data-f="ordre" value="${r.ordre||""}" placeholder="—" style="min-width:66px">
+            <span class="tick">${r.cur==="EUR"?"€":"$"}</span>
+            <input type="number" step="any" data-f="ordreQty" value="${r.ordreQty||""}" placeholder="qté" style="min-width:52px" aria-label="Nombre de titres à vendre">
+            ${r.ordreState==="atteint"?'<span class="pill g" title="le cours a dépassé ta cible">atteint</span>'
+             :r.ordreState==="proche"?`<span class="pill w" title="à ${nfNum.format(Math.abs(r.ordreGap))} % de ta cible">proche</span>`
+             :r.ordreState?`<span class="pill n">${pct(r.ordreGap,0)}</span>`:""}</span></td>
+          <td><button class="btn ghost sm" data-del="${r.id}" title="Supprimer la ligne" aria-label="Supprimer ${esc(r.name)}">×</button></td>
+        </tr>`).join("")
+        : '<tr><td colspan="12"><div class="empty">Aucune ligne ne correspond au filtre.</div></td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p style="font-size:12px;color:var(--muted);margin:10px 2px;max-width:70ch;line-height:1.6">
+    <b style="color:var(--ink)">Perf. titre</b> compare le cours au prix de revient dans la devise de cotation : c'est la performance de ton choix de valeur.
+    <b style="color:var(--ink)">Perf. €</b> ajoute l'effet de change, en convertissant chaque achat au taux du mois où il a été passé — c'est ce que la ligne a réellement rapporté ou coûté en euros.
+    Les quantités et prix de revient s'éditent dans le tableau ; tout se recalcule à la sortie du champ.
+  </p>`;
+}
+
+/* ---------- GAINS ENCAISSÉS ---------- */
+function vReal(C){
+  const R = [...(S.realised||[])].sort((a,b)=>b.gainEur-a.gainEur);
+  const win = R.filter(r=>r.gainEur>0), lose = R.filter(r=>r.gainEur<=0);
+  const best = R[0];
+  const soldOut = R.filter(r=>!S.positions.find(p=>p.tk===r.tk && p.acct===r.acct));
+  return `
+  <div class="section kpis">
+    <div class="kpi"><div class="k">Plus-values encaissées</div><div class="v ${sgn(C.realised)}">${(C.realised>=0?"+":"")+eur(C.realised)}</div>
+      <div class="m">sur ${eur(C.proceeds)} de ventes</div></div>
+    <div class="kpi"><div class="k">Lignes gagnantes</div><div class="v">${win.length} <span style="font-size:14px;color:var(--muted)">/ ${R.length}</span></div>
+      <div class="m">${lose.length? lose.length+" vendue"+(lose.length>1?"s":"")+" à perte" : "aucune vente à perte"}</div></div>
+    <div class="kpi"><div class="k">Meilleur arbitrage</div><div class="v">${best?esc(best.tk):"—"}</div>
+      <div class="m">${best? (best.gainEur>=0?"+":"")+eur(best.gainEur)+" sur "+best.qty+" titres" : ""}</div></div>
+    <div class="kpi"><div class="k">Lignes soldées</div><div class="v">${soldOut.length}</div>
+      <div class="m">${soldOut.length? soldOut.map(r=>r.tk).join(" · ") : "toutes encore détenues"}</div></div>
+  </div>
+
+  <div class="callout a section">
+    <span>€</span><div>Chaque vente est valorisée au taux de change du mois où elle a été passée, et comparée au prix de revient moyen
+    des titres à cet instant. Le total ci-dessous est un <b>résultat encaissé</b> : il est acquis, quoi que fassent les cours ensuite.</div>
+  </div>
+
+  <div class="panel section">
+    <div class="panel-head"><h2>Ce que chaque ligne a rapporté</h2>
+      <span class="note">${R.length} valeurs vendues, en tout ou partie</span></div>
+    <div class="tablewrap"><table>
+      <thead><tr><th class="l">Valeur</th><th class="l">Compte</th><th>Titres vendus</th><th>Produit des ventes</th>
+        <th>PV encaissée</th><th>Part du gain</th><th class="l">Statut</th></tr></thead>
+      <tbody>${R.map(r=>{
+        const share = C.realised>0 ? r.gainEur/C.realised*100 : 0;
+        const held = S.positions.find(p=>p.tk===r.tk && p.acct===r.acct);
+        return `<tr class="sev-${r.gainEur>0?"g":"r"}">
+          <td class="l"><div class="cell-name"><span class="nm">${esc(r.name)}</span><span class="tick">${esc(r.tk)}</span></div></td>
+          <td class="l"><span class="acct">${ACCOUNTS[r.acct]?ACCOUNTS[r.acct].short:"—"}</span></td>
+          <td class="mono">${nfNum.format(r.qty)}</td>
+          <td class="mono">${eur(r.prodEur)}</td>
+          <td class="mono ${sgn(r.gainEur)}">${(r.gainEur>=0?"+":"")+eur(r.gainEur)}</td>
+          <td class="mono">${share.toFixed(1)} %</td>
+          <td class="l">${held?'<span class="pill a">encore détenue</span>':'<span class="pill n">soldée</span>'}</td>
+        </tr>`;}).join("")}</tbody>
+      <tfoot><tr><td class="l"><b>Total encaissé</b></td><td></td><td></td>
+        <td class="mono"><b>${eur(C.proceeds)}</b></td>
+        <td class="mono ${sgn(C.realised)}"><b>${(C.realised>=0?"+":"")+eur(C.realised)}</b></td><td></td><td></td></tr></tfoot>
+    </table></div>
+  </div>
+
+  ${C.inc && (C.inc.dividendes||C.inc.interets)? `<div class="panel section">
+    <div class="panel-head"><h2>Revenus hors plus-values</h2><span class="note">relevés dans l'export Trade Republic</span></div>
+    <div class="tablewrap"><table style="min-width:520px"><tbody>
+      <tr><td class="l">Dividendes nets de retenue</td><td class="mono pos">${(C.inc.dividendes>=0?"+":"")+eur(C.inc.dividendes,1)}</td>
+        <td class="l" style="color:var(--muted);font-size:12px">Qualcomm en verse l'essentiel</td></tr>
+      <tr><td class="l">Intérêts sur les liquidités</td><td class="mono pos">${(C.inc.interets>=0?"+":"")+eur(C.inc.interets,1)}</td>
+        <td class="l" style="color:var(--muted);font-size:12px">rémunération du cash non investi</td></tr>
+      <tr><td class="l">Frais d'ordre payés</td><td class="mono neg">-${eur(C.inc.frais,1)}</td>
+        <td class="l" style="color:var(--muted);font-size:12px">1 € par ordre, déjà déduits des calculs</td></tr>
+      <tr><td class="l">Versements sur le compte</td><td class="mono">${eur(C.inc.versements)}</td>
+        <td class="l" style="color:var(--muted);font-size:12px">argent apporté depuis ta banque</td></tr>
+    </tbody></table></div></div>`:""}
+
+  <div class="panel section">
+    <div class="panel-head"><h2>Poids de chaque arbitrage</h2><span class="note">en euros encaissés</span></div>
+    <div style="padding:0 16px 18px">
+      ${stackedBar(R.filter(r=>r.gainEur>0).map(r=>({label:r.tk,val:r.gainEur})),
+                   R.filter(r=>r.gainEur>0).reduce((a,r)=>a+r.gainEur,0))}
+    </div>
+  </div>
+
+  ${(S.flags&&S.flags.length)? `<div class="eyebrow">Points à trancher dans le journal</div>
+  <div class="panel"><div style="padding:14px 16px;display:flex;flex-direction:column;gap:12px">
+    ${S.flags.map(f=>`<div style="display:flex;gap:11px;align-items:flex-start;font-size:12.5px;line-height:1.55">
+      <span class="tick" style="min-width:52px;padding-top:2px">${esc(f.tk)}</span>
+      <span style="color:var(--ink-2)">${esc(f.txt)}</span></div>`).join("")}
+  </div></div>`:""}`;
+}
+
+/* ---------- JOURNAL ---------- */
+let jType = "ALL", jYear = "ALL";
+
+function vJournal(C){
+  const all = S.txn || [];
+  if(!all.length) return '<div class="panel section"><div class="empty">Aucune opération enregistrée. Utilise <b>Import Trade Republic</b> pour charger ton journal.</div></div>';
+
+  const years = [...new Set(all.map(t=>t.d.slice(0,4)))].sort().reverse();
+  let T = all;
+  if(filterAcct!=="ALL") T = T.filter(t=>t.acct===filterAcct);
+  if(jType!=="ALL")      T = T.filter(t=>t.type===jType);
+  if(jYear!=="ALL")      T = T.filter(t=>t.d.slice(0,4)===jYear);
+  if(filterText){
+    const q=filterText.toLowerCase();
+    T = T.filter(t=>t.tk.toLowerCase().includes(q) || (TXN_LABEL[t.type]||"").toLowerCase().includes(q));
+  }
+  T = [...T].sort((a,b)=> a.d<b.d ? 1 : (a.d>b.d ? -1 : 0));
+
+  const sum = ty => all.filter(t=>t.type===ty).reduce((a,t)=>a+t.amt,0);
+  const achats = sum("A"), ventes = sum("V"), divs = sum("D");
+  const nOps = all.filter(t=>t.type==="A"||t.type==="V").length;
+
+  /* activité par trimestre : volume acheté et vendu, une seule échelle */
+  const q = {};
+  all.filter(t=>t.type==="A"||t.type==="V").forEach(t=>{
+    const k = t.d.slice(0,4)+"-T"+(Math.floor(+t.d.slice(5,7)/3.01)+1);
+    const c = q[k] || (q[k]={a:0,v:0});
+    if(t.type==="A") c.a+=t.amt; else c.v+=t.amt;
+  });
+  const keys = Object.keys(q).sort();
+  const peak = Math.max(...keys.map(k=>Math.max(q[k].a,q[k].v)),1);
+
+  return `
+  <div class="section kpis">
+    <div class="kpi"><div class="k">Opérations de bourse</div><div class="v">${nOps}</div>
+      <div class="m">${all.filter(t=>t.type==="A").length} achats · ${all.filter(t=>t.type==="V").length} ventes</div></div>
+    <div class="kpi"><div class="k">Total investi</div><div class="v">${eur(achats)}</div>
+      <div class="m">frais d'ordre compris</div></div>
+    <div class="kpi"><div class="k">Total désinvesti</div><div class="v">${eur(ventes)}</div>
+      <div class="m">net de frais et de taxes</div></div>
+    <div class="kpi"><div class="k">Première opération</div><div class="v" style="font-size:17px">${frDate(all.map(t=>t.d).sort()[0])}</div>
+      <div class="m">dernière le ${frDate(all.map(t=>t.d).sort().reverse()[0])}</div></div>
+  </div>
+
+  <div class="panel section">
+    <div class="panel-head"><h2>Rythme d'activité</h2>
+      <span class="note">montants engagés par trimestre, en euros</span></div>
+    <div style="padding:0 16px 18px">
+      <div class="legend" style="margin:0 0 12px">
+        <span class="li"><span class="dot" style="background:var(--c1)"></span>Achats</span>
+        <span class="li"><span class="dot" style="background:var(--c2)"></span>Ventes</span>
+      </div>
+      <div class="barlist">
+        ${keys.map(k=>`<div class="barrow" style="grid-template-columns:70px 1fr 96px">
+          <span class="lbl mono" style="font-family:'IBM Plex Mono',monospace;font-size:11.5px">${k}</span>
+          <span style="display:flex;flex-direction:column;gap:3px">
+            <span class="bartrack" style="height:8px"><span class="barfill" style="left:0;width:${(q[k].a/peak*100).toFixed(1)}%;background:var(--c1)"></span></span>
+            <span class="bartrack" style="height:8px"><span class="barfill" style="left:0;width:${(q[k].v/peak*100).toFixed(1)}%;background:var(--c2)"></span></span>
+          </span>
+          <span class="val" style="line-height:1.35"><span style="color:var(--c1)">${eur(q[k].a)}</span><br><span style="color:var(--c2)">${q[k].v? eur(q[k].v) : "—"}</span></span>
+        </div>`).join("")}
+      </div>
+    </div>
+  </div>
+
+  <div class="section filters">
+    <div class="seg" id="acctSeg">
+      <button data-a="ALL" aria-pressed="${filterAcct==="ALL"}">Tout</button>
+      ${Object.keys(ACCOUNTS).map(k=>`<button data-a="${k}" aria-pressed="${filterAcct===k}">${ACCOUNTS[k].label}</button>`).join("")}
+    </div>
+    <div class="seg" id="typeSeg">
+      <button data-t="ALL" aria-pressed="${jType==="ALL"}">Tous mouvements</button>
+      ${["A","V","D","G"].map(t=>`<button data-t="${t}" aria-pressed="${jType===t}">${TXN_PLURAL[t]}</button>`).join("")}
+    </div>
+    <select id="yearSel" style="max-width:120px">
+      <option value="ALL"${jYear==="ALL"?" selected":""}>Toutes années</option>
+      ${years.map(y=>`<option value="${y}"${jYear===y?" selected":""}>${y}</option>`).join("")}
+    </select>
+    <input type="text" class="search" id="q" placeholder="Filtrer un ticker…" value="${esc(filterText)}">
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Journal des opérations</h2>
+      <span class="note">${T.length} ligne${T.length>1?"s":""} affichée${T.length>1?"s":""} sur ${all.length}</span></div>
+    <div class="tablewrap"><table style="min-width:760px">
+      <thead><tr><th class="l">Date</th><th class="l">Compte</th><th class="l">Valeur</th>
+        <th class="l">Mouvement</th><th>Titres</th><th>Prix unitaire</th><th>Montant</th></tr></thead>
+      <tbody>${T.length? T.map(t=>{
+        const pos = S.positions.find(p=>p.tk===t.tk);
+        return `<tr>
+        <td class="l mono">${frDate(t.d)}</td>
+        <td class="l"><span class="acct">${ACCOUNTS[t.acct]?ACCOUNTS[t.acct].short:t.acct}</span></td>
+        <td class="l"><span class="tick">${esc(t.tk)}</span>${pos?"":' <span style="color:var(--muted);font-size:11px">soldée</span>'}</td>
+        <td class="l"><span class="pill ${t.type==="A"?"n":(t.type==="V"?"a":"g")}">${TXN_LABEL[t.type]}</span></td>
+        <td class="mono">${t.qty? nfNum.format(t.qty) : "—"}</td>
+        <td class="mono">${t.px? nfPx.format(t.px)+" €" : "—"}</td>
+        <td class="mono ${t.type==="A"?"":"pos"}">${t.amt? (t.type==="A"?"−":"+")+eur(t.amt,1) : "—"}</td>
+      </tr>`;}).join("")
+      : '<tr><td colspan="7"><div class="empty">Aucun mouvement ne correspond aux filtres.</div></td></tr>'}</tbody>
+    </table></div>
+  </div>
+
+  <p style="font-size:12px;color:var(--muted);margin:12px 2px;max-width:74ch;line-height:1.6">
+    C'est ce journal qui produit tous les chiffres de la page : les prix de revient sont recalculés
+    opération par opération, en prix moyen pondéré. Les montants sont nets — le frais d'ordre de 1 €
+    est ajouté aux achats et retiré des ventes, et les retenues à la source sont déduites des dividendes.
+    ${divs? "Les dividendes totalisent "+eur(divs,1)+" nets." : ""}
+    Les transferts de garde de février 2025, à quantité inchangée et sans montant, ne sont pas affichés.
+  </p>`;
+}
+
+/* ---------- PRIX CONSEILLÉS ---------- */
+function vWl(C){
+  let rows = S.watchlist.map(w=>{
+    const ratio = w.recoUsd>0 ? w.pxUsd/w.recoUsd : 0;
+    const held  = S.positions.find(p=>p.tk===w.tk);
+    return {...w, ratio, ecart:(ratio-1)*100, held:!!held,
+            sector:SECTORS[w.tk]||"Autre"};
+  });
+  if(filterText){
+    const q=filterText.toLowerCase();
+    rows = rows.filter(r=>r.name.toLowerCase().includes(q)||r.tk.toLowerCase().includes(q));
+  }
+  rows.sort((a,b)=>a.ecart-b.ecart);
+
+  return `
+  <div class="section callout a">
+    <span>↺</span><div>Ta colonne H du Sheet affiche un <b>rapport</b> (203 % = le cours vaut 2,03 fois le prix conseillé), pas un gain.
+    Ici les deux sont séparés : le <b>multiple</b> ×2,03 et l'<b>écart réel</b> +103 %. Trié du moins cher au plus cher par rapport à ta cible.</div>
+  </div>
+
+  <div class="section filters">
+    <input type="text" class="search" id="q" placeholder="Filtrer une valeur…" value="${esc(filterText)}">
+    <span class="pill n">${rows.filter(r=>r.ecart<=5).length} sous ou proche de la cible</span>
+    <span style="margin-left:auto"><button class="btn sm" id="btnEditPx">Mettre les cours à jour</button></span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><h2>Valeurs suivies et prix d'achat conseillés</h2>
+      <span class="note">cours du ${frDate(S.pxDate)}</span></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th class="l">Valeur</th><th class="l">Poche</th>
+          <th>Conseillé €</th><th>Conseillé $</th><th>Cours $</th><th>Cours €</th>
+          <th>Multiple</th><th>Écart à la cible</th><th class="l">Détenue</th>
+        </tr></thead>
+        <tbody>${rows.map(r=>`<tr class="${r.ecart<=0?"sev-g":(r.ecart<=5?"sev-w":"")}">
+          <td class="l"><div class="cell-name"><span class="nm">${esc(r.name)}</span><span class="tick">${esc(r.tk)}</span></div></td>
+          <td class="l"><span class="acct">${r.sector}</span></td>
+          <td class="mono">${nfNum.format(r.recoEur)}</td>
+          <td class="mono">${nfNum.format(r.recoUsd)}</td>
+          <td class="mono">${nfNum.format(r.pxUsd)}</td>
+          <td class="mono">${nfNum.format(r.pxEur)}</td>
+          <td class="mono">×${r.ratio.toFixed(2)}</td>
+          <td class="mono ${r.ecart<=0?"pos":""}">${pct(r.ecart,0)}</td>
+          <td class="l">${r.held?'<span class="pill a">en portefeuille</span>':'<span class="pill n">suivi</span>'}</td>
+        </tr>`).join("")}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+/* ---------- ALLOCATION ---------- */
+function sectorGroups(C){
+  const m={};
+  C.rows.forEach(r=>{ m[r.sector]=(m[r.sector]||0)+r.val; });
+  return SECTOR_ORDER.filter(s=>m[s]).map(s=>({label:s,val:m[s]}));
+}
+function vAlloc(C){
+  const sectors = sectorGroups(C);
+  const accts = Object.keys(C.byAcct).filter(k=>C.byAcct[k].n)
+                 .map(k=>({label:ACCOUNTS[k].label,val:C.byAcct[k].val}));
+  const cur={};
+  C.rows.forEach(r=>{ const k=r.cur==="EUR"?"Zone euro (EUR)":"Dollar (USD)"; cur[k]=(cur[k]||0)+r.val; });
+  const curs = Object.keys(cur).map(k=>({label:k,val:cur[k]}));
+  const top = [...C.rows].sort((a,b)=>b.val-a.val);
+  const hhi = C.total>0 ? C.rows.reduce((a,r)=>a+Math.pow(r.val/C.total*100,2),0) : 0;
+  const top3 = top.slice(0,3).reduce((a,r)=>a+r.weight,0);
+  const usdShare = C.total>0 ? (cur["Dollar (USD)"]||0)/C.total*100 : 0;
+  const risk = hhi>2500?["Très concentré","r"]:(hhi>1500?["Concentré","w"]:["Diversifié","g"]);
+
+  return `
+  <div class="section kpis">
+    <div class="kpi"><div class="k">Concentration (HHI)</div><div class="v">${Math.round(hhi)}</div>
+      <div class="m"><span class="pill ${risk[1]}">${risk[0]}</span></div></div>
+    <div class="kpi"><div class="k">Poids des 3 premières</div><div class="v">${top3.toFixed(0)} %</div>
+      <div class="m">${top.slice(0,3).map(r=>r.tk).join(" · ")}</div></div>
+    <div class="kpi"><div class="k">Exposition dollar</div><div class="v">${usdShare.toFixed(0)} %</div>
+      <div class="m">le reste est libellé en euro</div></div>
+    <div class="kpi"><div class="k">Nombre de poches</div><div class="v">${sectors.length}</div>
+      <div class="m">${C.rows.length} lignes réparties</div></div>
+  </div>
+
+  <div class="section grid two" style="grid-template-columns:1fr 1fr">
+    <div class="panel"><div class="panel-head"><h2>Par secteur</h2></div>
+      <div style="padding:0 16px 18px">${stackedBar(sectors,C.total)}</div></div>
+    <div class="panel"><div class="panel-head"><h2>Par compte</h2></div>
+      <div style="padding:0 16px 18px">${stackedBar(accts,C.total)}</div></div>
+  </div>
+
+  <div class="section grid two" style="grid-template-columns:1fr 1fr">
+    <div class="panel"><div class="panel-head"><h2>Par devise</h2><span class="note">risque de change</span></div>
+      <div style="padding:0 16px 18px">${stackedBar(curs,C.total)}
+      <p style="font-size:12.5px;color:var(--muted);margin:14px 0 0;line-height:1.55">
+        Une baisse de 10 % du dollar face à l'euro coûterait environ
+        <b style="color:var(--ink)">${eur((cur["Dollar (USD)"]||0)*0.10)}</b> à valeur d'action constante.</p></div></div>
+    <div class="panel"><div class="panel-head"><h2>Poids des lignes</h2><span class="note">top 10</span></div>
+      <div style="padding:0 16px 18px"><div class="barlist">
+        ${top.slice(0,10).map((r,i)=>`<div class="barrow">
+          <span class="lbl"><span class="tick">${esc(r.tk)}</span> ${esc(r.name)}</span>
+          <span class="bartrack"><span class="barfill" style="left:0;width:${(r.weight/(top[0].weight||1)*100).toFixed(1)}%;background:var(--accent)"></span></span>
+          <span class="val">${r.weight.toFixed(1)} %</span></div>`).join("")}
+      </div></div></div>
+  </div>
+
+  <div class="eyebrow">Performance ligne par ligne</div>
+  <div class="panel">
+    <div class="panel-head"><h2>Écart au prix de revient</h2><span class="note">dans la devise de cotation, effet de change exclu</span></div>
+    <div style="padding:0 16px 18px">
+    ${divergingBars([...C.rows].sort((a,b)=>b.perf-a.perf).map(r=>({tk:r.tk,label:r.name,v:r.perf})))}
+  </div></div>`;
+}
+
+/* ---------- HISTORIQUE ---------- */
+function vHist(C){
+  const h=[...S.history].reverse();
+  const peak = S.history.length? Math.max(...S.history.map(p=>p.total)) : 0;
+  const first= S.history.length? S.history[0] : null;
+  const since = first && first.total>0 ? (C.total/first.total-1)*100 : 0;
+  return `
+  <div class="section kpis">
+    <div class="kpi"><div class="k">Valeur actuelle</div><div class="v">${eur(C.total)}</div><div class="m">au ${frDate(today())}</div></div>
+    <div class="kpi"><div class="k">Record</div><div class="v">${peak?eur(peak):"—"}</div>
+      <div class="m">${peak? (C.total>=peak?"atteint aujourd'hui":"soit "+pct((C.total/peak-1)*100)+" du sommet") : "aucun point enregistré"}</div></div>
+    <div class="kpi"><div class="k">Depuis le 1ᵉʳ point</div><div class="v ${sgn(since)}">${first?pct(since):"—"}</div>
+      <div class="m">${first?frDate(first.d):"—"}</div></div>
+    <div class="kpi"><div class="k">Points enregistrés</div><div class="v">${S.history.length}</div>
+      <div class="m">un clic sur « Point du jour »</div></div>
+  </div>
+
+  <div class="panel section">
+    <div class="panel-head"><h2>Courbe de valeur</h2><span class="note">euros, tous comptes</span></div>
+    <div style="padding:0 16px 16px">${lineChart(S.history)}</div>
+  </div>
+
+  <div class="panel section">
+    <div class="panel-head"><h2>Relevés</h2>
+      <span class="note"><button class="btn sm" id="btnSnap2">Enregistrer le point du jour</button></span></div>
+    <div class="tablewrap"><table style="min-width:0">
+      <thead><tr><th class="l">Date</th><th>Total</th><th>Trade Republic</th><th>Boursorama</th><th>Variation</th><th></th></tr></thead>
+      <tbody>${h.length? h.map((p,i)=>{
+        const prev = h[i+1];
+        const d = prev && prev.total>0 ? (p.total/prev.total-1)*100 : null;
+        return `<tr><td class="l mono">${frDate(p.d)}</td>
+          <td class="mono">${eur(p.total)}</td><td class="mono">${eur(p.tr||0)}</td><td class="mono">${eur(p.pea||0)}</td>
+          <td class="mono ${d==null?"":sgn(d)}">${d==null?"—":pct(d)}</td>
+          <td><button class="btn ghost sm" data-delh="${p.d}" aria-label="Supprimer le point du ${frDate(p.d)}">×</button></td></tr>`;
+      }).join("") : '<tr><td colspan="6"><div class="empty">Aucun relevé. Le premier point sert de base à toutes les comparaisons.</div></td></tr>'}</tbody>
+    </table></div>
+  </div>`;
+}
+
+/* ---------- PARAMÈTRES ---------- */
+function vParam(C){
+  return `
+  <div class="section grid two" style="grid-template-columns:1fr 1fr">
+    <div class="panel"><div class="panel-head"><h2>Taux de change</h2></div>
+      <div style="padding:0 16px 18px">
+        <div class="field" style="max-width:200px"><label>1 USD en euros</label>
+          <input type="number" step="0.0001" id="fxIn" value="${S.fx}"></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:12px 0 0;line-height:1.55">
+          Toutes les valeurs libellées en dollar sont converties avec ce taux. Le Sheet utilisait 0,8636.</p>
+      </div></div>
+    <div class="panel"><div class="panel-head"><h2>Date des cours</h2></div>
+      <div style="padding:0 16px 18px">
+        <div class="field" style="max-width:200px"><label>Cours arrêtés au</label>
+          <input type="date" id="pxDateIn" value="${S.pxDate}"></div>
+        <p style="font-size:12.5px;color:var(--muted);margin:12px 0 0;line-height:1.55">
+          Affichée partout pour que tu saches d'un coup d'œil si la page travaille sur des cours périmés.</p>
+      </div></div>
+  </div>
+
+  <div class="panel section"><div class="panel-head"><h2>Mettre à jour depuis Trade Republic</h2>
+    <span class="note">la source la plus fiable</span></div>
+    <div style="padding:0 16px 18px">
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6;max-width:72ch">
+        L'export de transactions du courtier contient tout : chaque ordre, en euros, frais et taxes compris,
+        plus les dividendes et les intérêts. La page le rejoue depuis la première opération et recalcule
+        quantités, prix de revient et plus-values encaissées. Aucune estimation, aucun taux de change à deviner.
+        Récupère-le dans l'application : <b>Profil → Relevés → Exportation de transactions</b>.</p>
+      <button class="btn primary" id="btnImportTR3">Choisir le fichier CSV</button>
+      <p style="font-size:12px;color:var(--muted);margin:12px 0 0">
+        ${S.income? "Dernier import : "+eur(S.income.dividendes,1)+" de dividendes, "+eur(S.income.interets,1)+" d'intérêts, "+eur(S.income.frais,1)+" de frais d'ordre." : ""}</p>
+    </div></div>
+
+  <div class="panel section"><div class="panel-head"><h2>Actualiser les cours depuis Google Finance</h2>
+    <span class="note">deux clics</span></div>
+    <div style="padding:0 16px 18px">
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 12px;line-height:1.6;max-width:74ch">
+        Une page publiée n'a pas le droit d'aller lire une adresse extérieure : le navigateur le lui interdit,
+        et Google Finance demande ta session. Elle sait en revanche <b style="color:var(--ink)">lire la page que tu colles</b>,
+        et la forme du tableau Google est régulière — aucune IA n'intervient, aucun cours ne peut être inventé.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn primary" id="btnGF2">Coller la page Google Finance</button>
+        <a class="btn" href="${GF_URLS.TR}" target="_blank" rel="noopener">Portefeuille Trade Republic ↗</a>
+        <a class="btn" href="${GF_URLS.BOURSO}" target="_blank" rel="noopener">Portefeuille Boursorama ↗</a>
+      </div>
+      <div class="callout" style="margin-bottom:14px"><span>★</span><div>
+        <b>Pour n'avoir qu'un seul clic à faire sur la page Google.</b>
+        Glisse le lien ci-dessous dans ta barre de favoris, puis clique dessus quand tu es sur ton portefeuille :
+        il copie la page d'un coup, il ne te reste qu'à revenir ici et coller.<br>
+        <a href="${GF_BOOKMARKLET}" class="btn sm" style="margin-top:8px;display:inline-flex"
+           onclick="return false" draggable="true">📋 Copier mon portefeuille</a>
+        <button class="btn ghost sm" id="btnCopyBk" style="margin-top:8px">Copier le code du favori</button>
+      </div></div>
+      <p style="font-size:12.5px;color:var(--muted);margin:0 0 10px;line-height:1.55">
+        Sinon, saisie directe — une ligne par valeur, au format <b style="color:var(--ink)">NVDA 217,44</b> :</p>
+      <textarea id="pxPaste" rows="6" placeholder="NVDA 217,44&#10;AAPL 325.13&#10;Microsoft 501,02 $&#10;…"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn primary" id="btnParsePx">Analyser et appliquer</button>
+        <button class="btn" id="btnPasteFull">Analyser un relevé complet (positions)</button>
+      </div>
+      <div id="parseOut" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <div class="panel section"><div class="panel-head"><h2>Données</h2></div>
+    <div style="padding:0 16px 18px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" id="btnExport2">Exporter en CSV</button>
+      <button class="btn" id="btnMarkAll">Marquer toutes les lignes comme vérifiées</button>
+      <button class="btn" id="btnReset">Réinitialiser depuis le Sheet</button>
+    </div></div>`;
+}
+
+/* ================================================================
+   7. INTERACTIONS
+   ================================================================ */
+function wire(){
+  const el=document.getElementById("view");
+  const nx=el.querySelector("#noticeX");
+  if(nx) nx.onclick=()=>{ notice=null; render(); };
+
+  el.querySelectorAll("th[data-sort]").forEach(th=>th.onclick=()=>{
+    const k=th.dataset.sort;
+    if(sortKey===k) sortDir=-sortDir; else {sortKey=k;sortDir=(k==="name"||k==="acct")?1:-1;}
+    render();
+  });
+
+  const seg=el.querySelector("#acctSeg");
+  if(seg) seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{filterAcct=b.dataset.a;render();});
+
+  const tseg=el.querySelector("#typeSeg");
+  if(tseg) tseg.querySelectorAll("button").forEach(b=>b.onclick=()=>{jType=b.dataset.t;render();});
+  const ysel=el.querySelector("#yearSel");
+  if(ysel) ysel.onchange=()=>{jYear=ysel.value;render();};
+
+  const q=el.querySelector("#q");
+  if(q){
+    q.oninput=()=>{ filterText=q.value; const c=q.selectionStart; render();
+      const nq=document.getElementById("q"); if(nq){nq.focus(); nq.setSelectionRange(c,c);} };
+  }
+
+  el.querySelectorAll("tbody input[data-f]").forEach(inp=>{
+    inp.onchange=()=>{
+      const id=inp.closest("tr").dataset.id;
+      const p=S.positions.find(x=>x.id===id); if(!p) return;
+      const f=inp.dataset.f;
+      const raw=String(inp.value).trim();
+      if(raw===""){                       /* champ vidé : on retire l'ordre */
+        if(f==="ordre"||f==="ordreQty"){ delete p[f]; delete p.ordreSrc; save(); render(); }
+        else render();
+        return;
+      }
+      const v=parseFloat(raw.replace(",","."));
+      if(!isFinite(v)||v<0){ render(); return; }
+      if(f==="ordre"||f==="ordreQty"){ p[f]=v; delete p.ordreSrc; save(); render(); return; }
+      p[f]=v;
+      if(inp.dataset.f==="pru") p.pruEur = p.cur==="EUR" ? v : v*S.fx;
+      p.ok=true; save(); render();
+    };
+  });
+
+  el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{
+    S.positions=S.positions.filter(p=>p.id!==b.dataset.del); save(); render(); toast("Ligne supprimée");
+  });
+  el.querySelectorAll("[data-delh]").forEach(b=>b.onclick=()=>{
+    S.history=S.history.filter(p=>p.d!==b.dataset.delh); save(); render();
+  });
+
+  const add=el.querySelector("#btnAdd"); if(add) add.onclick=openAdd;
+  const p2=el.querySelector("#btnImportTR2"); if(p2) p2.onclick=openImportTR;
+  const s2=el.querySelector("#btnSnap2"); if(s2) s2.onclick=snapshot;
+  const ep=el.querySelector("#btnEditPx"); if(ep) ep.onclick=openGF;
+
+  const fx=el.querySelector("#fxIn");
+  if(fx) fx.onchange=()=>{ const v=parseFloat(fx.value); if(v>0){S.fx=v;save();render();} };
+  const pd=el.querySelector("#pxDateIn");
+  if(pd) pd.onchange=()=>{ S.pxDate=pd.value; save(); render(); };
+
+  const bp=el.querySelector("#btnParsePx"); if(bp) bp.onclick=parsePrices;
+  const g2=el.querySelector("#btnGF2"); if(g2) g2.onclick=openGF;
+  const cbk=el.querySelector("#btnCopyBk");
+  if(cbk) cbk.onclick=()=>{
+    try{ navigator.clipboard.writeText(GF_BOOKMARKLET);
+         toast("Code copié — crée un favori et colle-le dans le champ adresse"); }
+    catch(e){ toast("Copie refusée par le navigateur"); }
+  };
+  const bpf=el.querySelector("#btnPasteFull"); if(bpf) bpf.onclick=openPaste;
+  const bit=el.querySelector("#btnImportTR3"); if(bit) bit.onclick=openImportTR;
+  const be2=el.querySelector("#btnExport2"); if(be2) be2.onclick=exportCsv;
+  const bm=el.querySelector("#btnMarkAll"); if(bm) bm.onclick=()=>{
+    S.positions.forEach(p=>p.ok=true); save(); render(); toast("Toutes les lignes sont marquées vérifiées");
+  };
+  const br=el.querySelector("#btnReset"); if(br) br.onclick=()=>{
+    if(!confirm("Remplacer les positions et la watchlist par les données du Google Sheet ? L'historique est conservé.")) return;
+    const h=S.history; S={...JSON.parse(JSON.stringify(DEFAULT_STATE)),history:h}; save(); render(); toast("Données réinitialisées");
+  };
+
+  wireChartHover();
+}
+
+function wireChartHover(){
+  const svg=document.getElementById("histSvg"); if(!svg) return;
+  const tip=document.getElementById("tip");
+  svg.querySelectorAll("[data-hi]").forEach(r=>{
+    r.onmouseenter=e=>{
+      const p=S.history[+r.dataset.hi]; if(!p) return;
+      tip.innerHTML=`<div class="t">${frDate(p.d)}</div>
+        <div class="row"><span>Total</span><b>${eur(p.total)}</b></div>
+        <div class="row"><span>Trade Republic</span><span>${eur(p.tr||0)}</span></div>
+        <div class="row"><span>Boursorama</span><span>${eur(p.pea||0)}</span></div>`;
+      tip.style.opacity="1";
+    };
+    r.onmousemove=e=>{
+      tip.style.left=Math.min(e.clientX+14, window.innerWidth-180)+"px";
+      tip.style.top=(e.clientY-10)+"px";
+    };
+    r.onmouseleave=()=>{ tip.style.opacity="0"; };
+  });
+}
+
+/* ---------- modales ---------- */
+function modal(html){
+  const root=document.getElementById("modalRoot");
+  root.innerHTML=`<div class="modal-back"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  root.querySelector(".modal-back").onclick=e=>{ if(e.target===e.currentTarget) closeModal(); };
+  document.addEventListener("keydown", escClose);
+  return root.querySelector(".modal");
+}
+function escClose(e){ if(e.key==="Escape") closeModal(); }
+function closeModal(){
+  document.getElementById("modalRoot").innerHTML="";
+  document.removeEventListener("keydown", escClose);
+}
+
+function openAdd(){
+  const m=modal(`<h3>Nouvelle ligne</h3>
+    <p class="lead">Le cours est repris de la liste des valeurs suivies ; s'il s'agit d'un nouveau titre, renseigne-le aussi.</p>
+    <div class="form2">
+      <div class="field"><label>Nom</label><input type="text" id="aName" placeholder="Rheinmetall"></div>
+      <div class="field"><label>Ticker</label><input type="text" id="aTk" placeholder="RHM"></div>
+      <div class="field"><label>Compte</label><select id="aAcct">${Object.keys(ACCOUNTS).map(k=>`<option value="${k}">${ACCOUNTS[k].label}</option>`).join("")}</select></div>
+      <div class="field"><label>Devise</label><select id="aCur"><option>USD</option><option>EUR</option></select></div>
+      <div class="field"><label>Quantité</label><input type="number" step="any" id="aQty" value="1"></div>
+      <div class="field"><label>Prix de revient (devise du titre)</label><input type="number" step="any" id="aPru" value="0"></div>
+      <div class="field"><label>Cours actuel (si nouveau titre)</label><input type="number" step="any" id="aPx" placeholder="laisser vide si déjà suivi"></div>
+      <div class="field"><label>Prix conseillé (facultatif)</label><input type="number" step="any" id="aReco" placeholder="—"></div>
+    </div>
+    <div class="actions"><button class="btn" id="aCancel">Annuler</button><button class="btn primary" id="aOk">Ajouter</button></div>`);
+  m.querySelector("#aCancel").onclick=closeModal;
+  m.querySelector("#aOk").onclick=()=>{
+    const name=m.querySelector("#aName").value.trim();
+    const tk=m.querySelector("#aTk").value.trim().toUpperCase();
+    if(!name||!tk){ toast("Nom et ticker sont nécessaires"); return; }
+    const cur=m.querySelector("#aCur").value;
+    const pxv=parseFloat(m.querySelector("#aPx").value);
+    const reco=parseFloat(m.querySelector("#aReco").value);
+    if(!S.watchlist.find(w=>w.tk===tk)){
+      const pv = isFinite(pxv)?pxv:0;
+      S.watchlist.push({name,tk,
+        recoEur:isFinite(reco)?(cur==="EUR"?reco:reco*S.fx):0,
+        recoUsd:isFinite(reco)?(cur==="EUR"?reco/S.fx:reco):0,
+        pxUsd:cur==="EUR"?pv/S.fx:pv, pxEur:cur==="EUR"?pv:pv*S.fx});
+    } else if(isFinite(pxv)){ setPrice(tk,pxv,cur); }
+    const pru=parseFloat(m.querySelector("#aPru").value)||0;
+    S.positions.push({id:"p"+Date.now(),name,tk,acct:m.querySelector("#aAcct").value,
+      qty:parseFloat(m.querySelector("#aQty").value)||0,
+      pru, pruEur: cur==="EUR"? pru : pru*S.fx, cur, ok:true});
+    save(); closeModal(); view="pf"; render(); toast(name+" ajoutée");
+  };
+}
+
+function setPrice(tk,v,cur){
+  const w=S.watchlist.find(x=>x.tk===tk); if(!w||!(v>0)) return false;
+  if(cur==="EUR"){ w.pxEur=v; w.pxUsd=v/S.fx; } else { w.pxUsd=v; w.pxEur=v*S.fx; }
+  return true;
+}
+
+/* ================================================================
+   IMPORT DE L'EXPORT TRADE REPUBLIC
+   Le courtier exporte un CSV où tout est libellé en euros, frais et
+   taxes compris. On rejoue le journal du début : c'est le seul calcul
+   qui donne un prix de revient exact, et il ne dépend d'aucune IA.
+   ================================================================ */
+
+/* nom Trade Republic → [ticker, devise de cotation, nom d'affichage] */
+const TR_MAP = {
+  "AMD":["AMD","USD","AMD"],
+  "ARM (ADR)":["ARM","USD","ARM Holdings"],
+  "Xiaomi":["XIACF","USD","Xiaomi"],
+  "Intel":["INTC","USD","Intel"],
+  "Qualcomm":["QCOM","USD","Qualcomm"],
+  "NVIDIA":["NVDA","USD","NVIDIA"],
+  "BYD":["BYDDF","USD","BYD Company"],
+  "Microsoft":["MSFT","USD","Microsoft"],
+  "Apple":["AAPL","USD","Apple"],
+  "Alphabet (A)":["GOOGL","USD","Alphabet"],
+  "PEA NASDAQ 100 EUR (Acc)":["PUST","EUR","Amundi PEA Nasdaq-100"],
+  "Palantir Technologies":["PLTR","USD","Palantir"],
+  "Meta Platforms (A)":["META","USD","Meta Platforms"],
+  "Super Micro Computer":["SMCI","USD","Super Micro Computer"],
+  "Arista Networks":["ANET","USD","Arista Networks"],
+  "Xpeng (ADR)":["XPEV","USD","Xpeng (ADR)"],
+  "Contemporary Amperex Technolog":["CATL","EUR","CATL"],
+  "Tencent Holdings":["TCEHY","USD","Tencent"],
+  "SpaceX":["SPCX","USD","SpaceX (non coté)"]
+};
+
+/* Lecteur CSV tolérant aux guillemets et aux virgules dans les champs. */
+function csvRows(text){
+  const rows=[]; let row=[], cell="", q=false;
+  const t = text.charCodeAt(0)===0xFEFF ? text.slice(1) : text;
+  for(let i=0;i<t.length;i++){
+    const c=t[i];
+    if(q){
+      if(c==='"'){ if(t[i+1]==='"'){cell+='"';i++;} else q=false; }
+      else cell+=c;
+    } else if(c==='"') q=true;
+    else if(c===","){ row.push(cell); cell=""; }
+    else if(c==="\n"){ row.push(cell); rows.push(row); row=[]; cell=""; }
+    else if(c!=="\r") cell+=c;
+  }
+  if(cell!==""||row.length){ row.push(cell); rows.push(row); }
+  return rows;
+}
+
+function importTradeRepublic(text){
+  const rows = csvRows(text);
+  if(!rows.length) throw new Error("Fichier vide.");
+  const head = rows[0].map(h=>h.trim());
+  const need = ["datetime","date","category","type","name","shares","price","amount","fee","tax"];
+  const idx = {};
+  need.forEach(k=>{ idx[k]=head.indexOf(k); });
+  if(idx.type<0 || idx.name<0 || idx.amount<0)
+    throw new Error("Ce fichier n'a pas la structure d'un export Trade Republic.");
+
+  const recs = rows.slice(1).filter(r=>r.length>=head.length-2)
+    .map(r=>({ dt:r[idx.datetime]||"", date:r[idx.date]||"", cat:r[idx.category]||"",
+               type:(r[idx.type]||"").trim(), name:(r[idx.name]||"").trim(),
+               shares:num(r[idx.shares]), price:num(r[idx.price]),
+               amount:num(r[idx.amount]), fee:num(r[idx.fee]), tax:num(r[idx.tax]) }))
+    .sort((a,b)=> a.dt<b.dt?-1:(a.dt>b.dt?1:0));
+  function num(v){ const n=parseFloat(String(v||"").trim()); return isFinite(n)?n:0; }
+
+  const book={}, sells={}, unknown=new Set(), txn=[];
+  let dividendes=0, interets=0, frais=0, versements=0, nOps=0, dLast="";
+  const TK = nm => (TR_MAP[nm] ? TR_MAP[nm][0] : nm.toUpperCase().slice(0,6));
+
+  for(const r of recs){
+    const B = n => book[n] || (book[n]={qty:0,cost:0,bonus:0});
+    if(r.type==="BUY"){
+      const b=B(r.name); b.qty+=Math.abs(r.shares); b.cost+=Math.abs(r.amount)+Math.abs(r.fee);
+      frais+=Math.abs(r.fee); nOps++; dLast=r.date||dLast;
+      txn.push({d:r.date, acct:"TR", tk:TK(r.name), type:"A",
+                qty:Math.abs(r.shares), px:r.price,
+                amt:Math.round((Math.abs(r.amount)+Math.abs(r.fee))*100)/100});
+      if(!TR_MAP[r.name]) unknown.add(r.name);
+    } else if(r.type==="SELL"){
+      const b=B(r.name); const q=Math.abs(r.shares);
+      const pru = b.qty>0 ? b.cost/b.qty : 0;
+      const net = Math.abs(r.amount)-Math.abs(r.fee)-Math.abs(r.tax);
+      const s = sells[r.name] || (sells[r.name]={qty:0,prodEur:0,gainEur:0});
+      s.qty+=q; s.prodEur+=net; s.gainEur += net - q*pru;
+      b.qty-=q; b.cost-=q*pru;
+      if(b.qty<1e-9){ b.qty=0; b.cost=0; }
+      frais+=Math.abs(r.fee); nOps++; dLast=r.date||dLast;
+      txn.push({d:r.date, acct:"TR", tk:TK(r.name), type:"V",
+                qty:q, px:r.price, amt:Math.round(net*100)/100});
+      if(!TR_MAP[r.name]) unknown.add(r.name);
+    } else if(r.type==="BONUS_ISSUE" || r.type==="BONUS_ISSUE_CANCELLED"){
+      const b=B(r.name); b.qty+=r.shares; b.bonus+=r.shares;   /* titres gratuits, coût nul */
+      txn.push({d:r.date, acct:"TR", tk:TK(r.name), type:"G", qty:r.shares, px:0, amt:0});
+    } else if(r.type==="FREE_RECEIPT"){
+      B(r.name).qty+=r.shares;                                  /* transfert de garde */
+    } else if(r.type==="DIVIDEND"){
+      dividendes += r.amount + r.tax;                           /* tax est négative */
+      txn.push({d:r.date, acct:"TR", tk:TK(r.name), type:"D", qty:0, px:0,
+                amt:Math.round((r.amount+r.tax)*100)/100});
+    } else if(r.type==="INTEREST_PAYMENT"){
+      interets += r.amount;
+    } else if(["CUSTOMER_INPAYMENT","CUSTOMER_INBOUND","TRANSFER_INSTANT_INBOUND","TRANSFER_INBOUND"].includes(r.type)){
+      versements += r.amount;
+    }
+  }
+  if(!nOps) throw new Error("Aucune opération de bourse trouvée dans ce fichier.");
+
+  /* --- positions --- */
+  const kept = S.positions.filter(p=>p.acct!=="TR");      /* Boursorama intact */
+  const fresh = [];
+  Object.keys(book).forEach(n=>{
+    const b=book[n]; if(b.qty<1e-6) return;
+    const m = TR_MAP[n] || [n.toUpperCase().slice(0,6),"EUR",n];
+    const old = S.positions.find(p=>p.tk===m[0] && p.acct==="TR");
+    fresh.push({id:"tr-"+m[0], name:m[2], tk:m[0], acct:"TR",
+      qty:Math.round(b.qty*1e4)/1e4, pru:Math.round(b.cost/b.qty*1e4)/1e4,
+      cur:m[1], ok:true, bonus:b.bonus||undefined,
+      ordre:old&&old.ordre, ordreQty:old&&old.ordreQty, ordreSrc:old&&old.ordreSrc});
+  });
+  fresh.sort((a,b)=>a.name.localeCompare(b.name,"fr"));
+  S.positions = kept.concat(fresh);
+
+  /* --- plus-values encaissées : Trade Republic recalculé, Boursorama conservé --- */
+  const keptReal = (S.realised||[]).filter(r=>r.acct && r.acct!=="TR");
+  const newReal = Object.keys(sells).map(n=>{
+    const m = TR_MAP[n] || [n.toUpperCase().slice(0,6),"EUR",n];
+    const s = sells[n];
+    return {tk:m[0], name:m[2], acct:"TR", qty:Math.round(s.qty*100)/100,
+            prodEur:Math.round(s.prodEur*100)/100, gainEur:Math.round(s.gainEur*100)/100};
+  });
+  S.realised = keptReal.concat(newReal).sort((a,b)=>b.gainEur-a.gainEur);
+
+  /* journal : Trade Republic rejoué, Boursorama conservé */
+  S.txn = (S.txn||[]).filter(t=>t.acct!=="TR").concat(txn)
+            .sort((a,b)=> a.d<b.d?-1:(a.d>b.d?1:0));
+
+  S.income = {dividendes:Math.round(dividendes*100)/100,
+              interets:Math.round(interets*100)/100,
+              frais:Math.round(frais*100)/100,
+              versements:Math.round(versements*100)/100};
+
+  /* les cours ne sont pas dans l'export : on garde ceux déjà connus,
+     et on crée une ligne de suivi pour toute valeur nouvelle. */
+  fresh.forEach(p=>{
+    if(!S.watchlist.find(w=>w.tk===p.tk))
+      S.watchlist.push({name:p.name, tk:p.tk, recoEur:0, recoUsd:0,
+        pxUsd: p.cur==="EUR" ? p.pru/S.fx : p.pru, pxEur: p.cur==="EUR" ? p.pru : p.pru*S.fx});
+  });
+
+  save(true);
+  return {nOps, dLast, positions:fresh.length, sells:newReal.length, txn:txn.length,
+          dividendes:S.income.dividendes, interets:S.income.interets,
+          frais:S.income.frais, versements:S.income.versements,
+          unknown:[...unknown]};
+}
+
+function openImportTR(){
+  const m=modal(`<h3>Mettre à jour depuis Trade Republic</h3>
+    <div class="body">
+    <p class="lead">Dans l'application Trade Republic : <b>Profil → Relevés → Exportation de transactions</b>.
+    Dépose le fichier <code>.csv</code> ici. Tout est rejoué depuis la première opération : quantités,
+    prix de revient frais compris, plus-values encaissées, dividendes et intérêts. Tes lignes Boursorama ne bougent pas.</p>
+    <div id="dropZone" style="border:2px dashed var(--line-strong);border-radius:10px;padding:26px 16px;text-align:center;background:var(--surface-2);cursor:pointer">
+      <div style="font-size:13px;font-weight:600">Dépose le fichier ici</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">ou clique pour le choisir · Exportation de transactions.csv</div>
+      <input type="file" id="trFile" accept=".csv,text/csv" style="display:none">
+    </div>
+    <div id="trOut" style="margin-top:14px"></div>
+    </div>
+    <div class="actions"><button class="btn" id="trClose">Fermer</button></div>`);
+  m.querySelector("#trClose").onclick=closeModal;
+  const zone=m.querySelector("#dropZone"), input=m.querySelector("#trFile"), out=m.querySelector("#trOut");
+  zone.onclick=()=>input.click();
+  zone.ondragover=e=>{e.preventDefault();zone.style.borderColor="var(--accent)";};
+  zone.ondragleave=()=>{zone.style.borderColor="var(--line-strong)";};
+  zone.ondrop=e=>{e.preventDefault();zone.style.borderColor="var(--line-strong)";
+    if(e.dataTransfer.files[0]) handle(e.dataTransfer.files[0]);};
+  input.onchange=()=>{ if(input.files[0]) handle(input.files[0]); };
+
+  function handle(file){
+    out.innerHTML='<div class="callout a">Lecture de '+esc(file.name)+'…</div>';
+    const fr=new FileReader();
+    fr.onerror=()=>{ out.innerHTML='<div class="callout">Le fichier n\'a pas pu être lu.</div>'; };
+    fr.onload=()=>{
+      try{
+        const r=importTradeRepublic(String(fr.result));
+        out.innerHTML=`<div class="callout a"><div>
+          <b>${r.nOps} opérations rejouées</b>, dernière le ${frDate(r.dLast)}.<br>
+          ${r.positions} lignes détenues · ${r.sells} valeurs vendues · ${r.txn} mouvements au journal ·
+          ${eur(r.dividendes,1)} de dividendes · ${eur(r.interets,1)} d'intérêts ·
+          ${eur(r.frais,1)} de frais d'ordre · ${eur(r.versements)} versés sur le compte.
+          ${r.unknown.length? "<br><b>À vérifier :</b> "+esc(r.unknown.join(", "))+" — valeur inconnue, devise supposée euro." : ""}
+        </div></div>`;
+        closeModal();
+        notice = {kind:"ok",
+          titre:r.nOps+" opérations rejouées, dernière le "+frDate(r.dLast),
+          texte:r.positions+" lignes détenues · "+r.sells+" valeurs vendues · "+r.txn+" mouvements au journal · "+
+                eur(r.dividendes,1)+" de dividendes · "+eur(r.interets,1)+" d'intérêts · "+
+                eur(r.frais,1)+" de frais d'ordre."+
+                (r.unknown.length? " À vérifier : "+r.unknown.join(", ")+" — valeur inconnue, devise supposée euro." : "")};
+        view="pf"; render(); toast("Portefeuille Trade Republic à jour");
+      }catch(e){
+        out.innerHTML='<div class="callout">'+esc(e.message||"Import impossible.")+'</div>';
+      }
+    };
+    fr.readAsText(file,"utf-8");
+  }
+}
+
+/* ================================================================
+   COURS DEPUIS GOOGLE FINANCE
+   Une page publiée n'a pas le droit d'aller chercher une adresse
+   extérieure : le navigateur le lui interdit, et Google Finance exige
+   la session d'Éric. En revanche le texte de la page a une forme
+   régulière — ticker, puis « $142.23 9 » — qui se lit sans IA.
+   ================================================================ */
+const GF_URLS = {
+  TR:"https://www.google.com/finance/beta/portfolio/19bded49-4978-40e3-b760-c95b445b49aa",
+  BOURSO:"https://www.google.com/finance/beta/portfolio/610dbe78-f900-4d81-8c50-63a00c51fdd8"
+};
+const GF_BOOKMARKLET =
+ "javascript:(function(){navigator.clipboard.writeText(document.body.innerText)"+
+ ".then(function(){alert('Portefeuille copie. Colle-le dans Carnet de Cote.')},"+
+ "function(){alert('Copie refusee par le navigateur.')})})()";
+
+/* Google Finance ne nomme pas toujours une valeur comme nous : Xpeng y
+   figure sous sa ligne de Francfort (8XPA, cotée en euros) alors que la
+   position est suivie ici sous l'ADR XPEV. */
+const GF_ALIAS = {"8XPA":"XPEV"};
+const gfTicker = tk => GF_ALIAS[tk] || tk;
+
+function numFr(v){
+  const n = parseFloat(String(v).replace(/\s| /g,"").replace(/,/g,""));
+  return isFinite(n) ? n : 0;
+}
+
+function parseGoogleFinance(text){
+  const L = String(text||"").split(/\r?\n/).map(l=>l.trim());
+  const found = {};
+  /* « $142.23 9 » ou « €101.04 2 » : cours puis quantité détenue */
+  const QUOTE = /^([$€])\s?([0-9][0-9., ]*)\s+([0-9][0-9., ]*)$/;
+  const VALUE = /^€\s?([0-9][0-9., ]*)$/;          /* la valeur de la ligne, en euros */
+  const TICK  = /^[A-Z0-9][A-Z0-9.]{0,7}$/;
+  for(let i=0;i<L.length;i++){
+    if(!TICK.test(L[i])) continue;
+    const tk = L[i];
+    for(let j=i+1;j<Math.min(i+6,L.length);j++){
+      if(TICK.test(L[j]) && L[j]!==tk) break;      /* on a changé de valeur */
+      const m = L[j].match(QUOTE);
+      if(!m) continue;
+      const px = numFr(m[2]), qty = numFr(m[3]);
+      if(px<=0) break;
+      /* la valeur en euros de la ligne suit quelques lignes plus bas ;
+         rapportée au cours en dollars, elle donne le taux de change
+         que Google applique — inutile d'aller le chercher ailleurs */
+      let valEur = 0;
+      for(let k=j+1;k<Math.min(j+10,L.length);k++){
+        if(TICK.test(L[k])) break;
+        const v = L[k].match(VALUE);
+        if(v){ valEur = numFr(v[1]); break; }
+      }
+      const key = gfTicker(tk);
+      found[key] = {tk:key, source:tk, cur: m[1]==="€" ? "EUR" : "USD", px, qty, valEur};
+      break;
+    }
+  }
+  return Object.values(found);
+}
+
+/* Taux USD→EUR implicite : médiane des rapports valeur/(cours×quantité)
+   sur les lignes cotées en dollar dont la valeur en euros est lisible. */
+function fxFromGoogle(rows){
+  const t = rows.filter(r=>r.cur==="USD" && r.valEur>0 && r.px>0 && r.qty>0)
+                .map(r=>r.valEur/(r.px*r.qty))
+                .filter(x=>x>0.5 && x<1.5).sort((a,b)=>a-b);
+  if(t.length<3) return 0;
+  return t[Math.floor(t.length/2)];
+}
+
+function applyGoogleFinance(rows, majFx){
+  let maj = 0; const inconnus = [], ecarts = [];
+  let fxAvant = S.fx, fxApres = 0;
+  if(majFx){
+    const f = fxFromGoogle(rows);
+    if(f && Math.abs(f - S.fx) > 0.0005){ S.fx = Math.round(f*1e5)/1e5; fxApres = S.fx; }
+  }
+  rows.forEach(r=>{
+    const w = S.watchlist.find(x=>x.tk===r.tk);
+    if(!w){ inconnus.push(r.source && r.source!==r.tk ? r.source+" ("+r.tk+")" : r.tk); return; }
+    if(setPrice(r.tk, r.px, r.cur)) maj++;
+    const pos = S.positions.find(p=>p.tk===r.tk && p.acct==="TR")
+             || S.positions.find(p=>p.tk===r.tk);
+    if(pos && r.qty>0 && Math.abs(pos.qty - r.qty) > Math.max(0.5, pos.qty*0.01))
+      ecarts.push({tk:r.tk, ici:pos.qty, gf:r.qty});
+  });
+  if(maj || fxApres){ S.pxDate = today(); save(true); }
+  return {maj, inconnus, ecarts, fxAvant, fxApres};
+}
+
+function openGF(){
+  const m=modal(`<h3>Actualiser les cours</h3>
+    <div class="body">
+    <p class="lead">Ouvre ton portefeuille Google Finance, sélectionne tout (<b>Ctrl+A</b>), copie (<b>Ctrl+C</b>),
+    puis colle ci-dessous. Les cours se mettent à jour tout seuls — sans IA, sans risque d'invention.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <a class="btn" href="${GF_URLS.TR}" target="_blank" rel="noopener">Ouvrir Trade Republic ↗</a>
+      <a class="btn" href="${GF_URLS.BOURSO}" target="_blank" rel="noopener">Ouvrir Boursorama ↗</a>
+    </div>
+    <div class="field"><label>Colle ici la page Google Finance</label>
+      <textarea id="gfText" rows="6" placeholder="Ctrl+V…"></textarea></div>
+    <div id="gfOut" style="margin-top:12px"></div>
+    </div>
+    <div class="actions">
+      <label class="hint" style="display:flex;align-items:center;gap:7px;cursor:pointer">
+        <input type="checkbox" id="gfFx" checked style="width:auto;margin:0">
+        <span id="gfHint">En attente du collage…</span>
+      </label>
+      <button class="btn" id="gfClose">Fermer</button>
+      <button class="btn primary" id="gfOk" disabled>Appliquer</button>
+    </div>`);
+  const ta=m.querySelector("#gfText"), out=m.querySelector("#gfOut"),
+        ok=m.querySelector("#gfOk"), hint=m.querySelector("#gfHint");
+  m.querySelector("#gfClose").onclick=closeModal;
+  let rows=[], connus=[], done=false;
+
+  const scan=()=>{
+    rows = parseGoogleFinance(ta.value);
+    connus = rows.filter(r=>S.watchlist.find(w=>w.tk===r.tk));
+    ok.disabled = !connus.length;
+    const f = fxFromGoogle(rows);
+    hint.textContent = connus.length
+      ? connus.length+" valeurs prêtes" + (f ? " · change lu : "+nfFx.format(Math.round(f*1e5)/1e5) : "")
+      : "En attente du collage…";
+    if(!ta.value.trim()){ out.innerHTML=""; return; }
+    if(!connus.length){
+      out.innerHTML='<div class="callout">Aucun cours reconnu dans ce texte. Vérifie que tu as bien copié la page <b>Investments</b> du portefeuille.</div>';
+      return;
+    }
+    out.innerHTML=`<div class="callout a"><b>${connus.length} valeurs lues.</b> Vérifie, puis clique sur <b>Appliquer</b>.</div>
+      <div class="tablewrap" style="margin-top:10px">
+      <table style="min-width:0"><thead><tr><th class="l">Valeur</th><th>Cours lu</th><th>Cours précédent</th></tr></thead>
+      <tbody>${connus.map(r=>{
+        const w=S.watchlist.find(x=>x.tk===r.tk);
+        const anc = r.cur==="EUR" ? (w.pxEur||0) : (w.pxUsd||0);
+        const d = anc>0 ? (r.px/anc-1)*100 : 0;
+        return `<tr><td class="l"><span class="tick">${esc(r.tk)}</span> ${esc(w.name)}</td>
+          <td class="mono">${money(r.px,r.cur)}</td>
+          <td class="mono ${sgn(d)}">${anc? money(anc,r.cur)+" ("+pct(d)+")" : "—"}</td></tr>`;
+      }).join("")}</tbody></table></div>`;
+  };
+  ta.oninput=scan;
+  ta.onpaste=()=>setTimeout(scan,0);
+
+  const apply=()=>{
+    if(done || ok.disabled) return;
+    done = true;                       /* pas de double application */
+    let r;
+    try{
+      r = applyGoogleFinance(rows, m.querySelector("#gfFx").checked);
+    }catch(err){
+      /* plutôt qu'un bouton qui semble mort, on dit ce qui a lâché */
+      done = false;
+      out.innerHTML = '<div class="callout"><b>L\'application a échoué.</b> '+
+        esc(String((err&&err.message)||err))+'</div>';
+      return;
+    }
+    /* on ferme tout de suite : le résultat s'affiche dans la page,
+       où il reste sous les yeux au lieu de disparaître avec la modale */
+    closeModal();
+    notice = {
+      kind: r.maj ? "ok" : "warn",
+      titre: r.maj ? r.maj+" cours actualisés au "+frDate(today())
+                   : "Aucun cours n'a pu être appliqué",
+      texte: [
+        r.fxApres ? "Taux de change ajusté à "+nfFx.format(r.fxApres)+" € pour 1 $ (au lieu de "+nfFx.format(r.fxAvant)+"), lu sur la page elle-même." : "",
+        r.ecarts.length ? "Quantités différentes de ce que compte Google Finance : "+
+          r.ecarts.map(e=>e.tk+" — "+nfNum.format(e.ici)+" ici, "+nfNum.format(e.gf)+" là-bas").join(" · ")+
+          ". Ton relevé Trade Republic fait foi, mais vérifie." : "",
+        r.inconnus.length ? "Lues sur la page mais pas dans tes valeurs suivies : "+r.inconnus.join(", ")+"." : ""
+      ].filter(Boolean).join(" ")
+    };
+    view = "pf"; render();
+    toast(r.maj+" cours actualisés");
+  };
+  ok.onclick = apply;
+  ta.onkeydown = e=>{ if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) apply(); };
+  setTimeout(()=>ta.focus(),50);
+}
+
+/* ---------- collage analysé par l'IA ---------- */
+function openPaste(){
+  const m=modal(`<h3>Coller un relevé</h3>
+    <p class="lead">Sélectionne ta page de portefeuille chez Trade Republic ou Boursorama, copie tout, et colle ici.
+    L'analyse en extrait les titres, quantités, prix de revient et cours.</p>
+    <div class="field"><label>Texte du relevé</label>
+      <textarea id="pText" rows="9" placeholder="Colle ici le contenu de ta page courtier…"></textarea></div>
+    <div class="field" style="margin-top:12px"><label>Compte concerné</label>
+      <select id="pAcct">${Object.keys(ACCOUNTS).map(k=>`<option value="${k}">${ACCOUNTS[k].label}</option>`).join("")}</select></div>
+    <div id="pOut" style="margin-top:14px"></div>
+    <div class="actions"><button class="btn" id="pCancel">Fermer</button>
+      <button class="btn primary" id="pOk">Analyser</button></div>`);
+  m.querySelector("#pCancel").onclick=closeModal;
+  m.querySelector("#pOk").onclick=async()=>{
+    const txt=m.querySelector("#pText").value.trim();
+    const acct=m.querySelector("#pAcct").value;
+    const out=m.querySelector("#pOut");
+    if(txt.length<20){ out.innerHTML='<div class="callout">Colle d\'abord le contenu de la page.</div>'; return; }
+    if(!SAMPLE){
+      const n=naiveParse(txt);
+      if(!n.length){ out.innerHTML='<div class="callout">L\'analyse assistée n\'est pas disponible ici et le format n\'a pas pu être lu ligne à ligne. Saisis les lignes à la main dans <b>Portefeuilles</b>.</div>'; return; }
+      applyPositions(n,acct); out.innerHTML=`<div class="callout a">${n.length} lignes reprises.</div>`;
+      setTimeout(()=>{closeModal();view="pf";render();},900); return;
+    }
+    out.innerHTML='<div class="callout a">Analyse en cours…</div>';
+    try{
+      const data=await SAMPLE.json(
+        "Voici le texte brut copié depuis une page de portefeuille d'un courtier (Trade Republic ou Boursorama), en français.\n"+
+        "Extrais chaque position détenue. Réponds UNIQUEMENT en JSON, sans commentaire, au format :\n"+
+        '{"positions":[{"name":"Nom du titre","ticker":"TICKER","qty":nombre,"pruEur":prix_de_revient_unitaire_EN_EUROS,"price":cours_unitaire_actuel_dans_sa_devise,"currency":"EUR"|"USD"}]}\n'+
+        "Règles : les nombres sont des nombres JSON (le séparateur décimal français devient un point, les espaces des milliers disparaissent).\n"+
+        "pruEur est TOUJOURS en euros. Si seul un montant investi total en euros est donné, divise-le par la quantité ; "+
+        "si seules la valeur et la plus-value latente en euros sont données, pruEur = (valeur - plus-value) / quantité.\n"+
+        "Si une donnée manque vraiment, mets 0. N'invente aucune ligne absente du texte.\n\nTEXTE :\n"+txt.slice(0,50000),
+        {modelTier:"default"}
+      );
+      const list=(data&&data.positions)||[];
+      if(!list.length){ out.innerHTML='<div class="callout">Aucune position reconnue dans ce texte.</div>'; return; }
+      applyPositions(list,acct);
+      out.innerHTML=`<div class="callout a"><b>${list.length} lignes reprises</b> sur le compte ${ACCOUNTS[acct].label}.</div>`;
+      setTimeout(()=>{closeModal();view="pf";render();},1000);
+    }catch(e){
+      const msg = e && e.code==="rate_limited" ? "Trop de demandes d'affilée — réessaie dans un moment."
+                : e && e.code==="not_granted" ? "L'analyse assistée n'est pas autorisée sur cette page."
+                : "L'analyse n'a pas abouti. Vérifie le texte collé ou saisis les lignes à la main.";
+      out.innerHTML='<div class="callout">'+esc(msg)+'</div>';
+    }
+  };
+}
+
+function applyPositions(list,acct){
+  list.forEach(it=>{
+    const tk=String(it.ticker||"").toUpperCase().trim();
+    const name=String(it.name||tk).trim();
+    if(!tk&&!name) return;
+    const cur=(it.currency==="EUR")?"EUR":"USD";
+    const key=tk||name.toUpperCase().slice(0,6);
+    if(it.price>0){
+      if(!S.watchlist.find(w=>w.tk===key)){
+        S.watchlist.push({name,tk:key,recoEur:0,recoUsd:0,
+          pxUsd:cur==="EUR"?it.price/S.fx:it.price, pxEur:cur==="EUR"?it.price:it.price*S.fx});
+      } else setPrice(key,it.price,cur);
+    }
+    /* le collage donne un prix de revient dans la devise du titre ;
+       faute de dates d'achat, il est converti au taux du jour */
+    const pru = it.pru>0 ? it.pru : (it.pruEur>0 ? (cur==="EUR"? it.pruEur : it.pruEur/S.fx) : 0);
+    const pe  = cur==="EUR" ? pru : pru*S.fx;
+    const ex=S.positions.find(p=>p.tk===key&&p.acct===acct);
+    if(ex){ ex.qty=it.qty||ex.qty; if(pru>0){ ex.pru=pru; ex.pruEur=pe; } ex.cur=cur; ex.ok=true; }
+    else S.positions.push({id:"p"+Date.now()+Math.random().toString(36).slice(2,6),
+      name,tk:key,acct,qty:it.qty||0,pru,pruEur:pe,cur,ok:true});
+  });
+  S.pxDate=today(); save(true);
+}
+
+function naiveParse(txt){
+  const out=[];
+  txt.split(/\r?\n/).forEach(l=>{
+    const m=l.match(/^\s*([A-Za-z0-9.&' -]{2,40}?)\s+([0-9]+(?:[.,][0-9]+)?)\s*$/);
+    if(m) out.push({name:m[1].trim(),ticker:m[1].trim().toUpperCase().slice(0,6),qty:0,pru:0,price:parseFloat(m[2].replace(",",".")),currency:"USD"});
+  });
+  return out;
+}
+
+async function parsePrices(){
+  const ta=document.getElementById("pxPaste");
+  const out=document.getElementById("parseOut");
+  const txt=(ta&&ta.value||"").trim();
+  if(txt.length<3){ out.innerHTML='<div class="callout">Colle d\'abord une liste de cours.</div>'; return; }
+
+  /* lecture directe : « TICKER 217,44 » ou « Nom 217.44 » */
+  let n=0;
+  txt.split(/\r?\n/).forEach(l=>{
+    const m=l.match(/^\s*([A-Za-z0-9.&' -]{1,40}?)[\s:]+([0-9][0-9\s.,]*)\s*(\$|€|USD|EUR)?\s*$/);
+    if(!m) return;
+    const key=m[1].trim().toUpperCase();
+    const v=parseFloat(m[2].replace(/\s/g,"").replace(/\.(?=\d{3}\b)/g,"").replace(",","."));
+    if(!isFinite(v)||v<=0) return;
+    const w=S.watchlist.find(x=>x.tk.toUpperCase()===key||x.name.toUpperCase()===key);
+    if(!w) return;
+    const cur=(m[3]==="€"||m[3]==="EUR")?"EUR":(m[3]?"USD":(w.pxEur&&!w.pxUsd?"EUR":"USD"));
+    if(setPrice(w.tk,v,cur)) n++;
+  });
+
+  if(n){ S.pxDate=today(); save(true); render();
+    out.innerHTML=`<div class="callout a"><b>${n} cours mis à jour.</b> Tous les calculs suivent.</div>`; return; }
+
+  if(!SAMPLE){ out.innerHTML='<div class="callout">Aucun ticker reconnu. Utilise le format <b>NVDA 217,44</b>, une valeur par ligne.</div>'; return; }
+  out.innerHTML='<div class="callout a">Aucune ligne lue directement — analyse assistée en cours…</div>';
+  try{
+    const known=S.watchlist.map(w=>w.tk+" ("+w.name+")").join(", ");
+    const data=await SAMPLE.json(
+      "Extrais les cours de bourse du texte ci-dessous et associe-les aux tickers connus.\n"+
+      "Tickers connus : "+known+"\n"+
+      'Réponds UNIQUEMENT en JSON : {"prices":[{"ticker":"NVDA","price":217.44,"currency":"USD"}]}\n'+
+      "N'inclus que les tickers de la liste ci-dessus effectivement présents dans le texte. Aucune invention.\n\nTEXTE :\n"+txt.slice(0,20000),
+      {modelTier:"quick"});
+    let k=0;
+    ((data&&data.prices)||[]).forEach(p=>{ if(setPrice(String(p.ticker||"").toUpperCase(),p.price,p.currency==="EUR"?"EUR":"USD")) k++; });
+    if(k){ S.pxDate=today(); save(true); render();
+      out.innerHTML=`<div class="callout a"><b>${k} cours mis à jour.</b></div>`; }
+    else out.innerHTML='<div class="callout">Aucun cours exploitable dans ce texte.</div>';
+  }catch(e){
+    out.innerHTML='<div class="callout">L\'analyse n\'a pas abouti. Utilise le format <b>NVDA 217,44</b>, une valeur par ligne.</div>';
+  }
+}
+
+/* ---------- snapshot ---------- */
+function snapshot(){
+  const C=computed();
+  const d=today();
+  const pt={d,total:C.total,tr:(C.byAcct.TR||{}).val||0,pea:(C.byAcct.BOURSO||{}).val||0};
+  const i=S.history.findIndex(p=>p.d===d);
+  if(i>=0) S.history[i]=pt; else S.history.push(pt);
+  S.history.sort((a,b)=>a.d<b.d?-1:1);
+  if(S.history.length>400) S.history=S.history.slice(-400);
+  save(true);                       /* geste délibéré : écriture immédiate */
+  view = "hist"; render();          /* on montre le relevé qui vient d'être posé */
+  toast((i>=0?"Point du ":"Point du ")+frDate(d)+" enregistré : "+eur(C.total)+
+        " · "+S.history.length+" relevés");
+}
+
+/* ---------- export ---------- */
+function buildCsv(){
+  const C=computed();
+  const head=["Compte","Valeur","Ticker","Secteur","Quantite","Devise","PRU_devise","PRU_EUR","Cours",
+              "Perf_titre_pct","Valeur_EUR","Cout_EUR","PV_EUR","Perf_EUR_pct","Poids_pct","Palier",
+              "Ordre_prix","Ordre_titres","Ordre_ecart_pct"];
+  const lines=[head.join(";")].concat(C.rows.map(r=>[
+    ACCOUNTS[r.acct]?ACCOUNTS[r.acct].label:r.acct, r.name, r.tk, r.sector,
+    r.qty, r.cur, r.pru.toFixed(4), pruEur(r).toFixed(4), r.pn.toFixed(4),
+    r.perf.toFixed(2), r.val.toFixed(2), r.cost.toFixed(2), r.pl.toFixed(2),
+    r.perf.toFixed(2), r.weight.toFixed(2), r.palier,
+    r.ordre||"", r.ordreQty||"", r.ordreGap==null?"":r.ordreGap.toFixed(2)
+  ].join(";")));
+  lines.push("");
+  lines.push("PLUS-VALUES REALISEES");
+  lines.push(["Valeur","Ticker","Compte","Titres_vendus","Produit_EUR","PV_EUR"].join(";"));
+  (S.realised||[]).forEach(r=>lines.push([r.name,r.tk,ACCOUNTS[r.acct]?ACCOUNTS[r.acct].label:"",r.qty,
+    r.prodEur.toFixed(2),r.gainEur.toFixed(2)].join(";")));
+  lines.push(["TOTAL","","","",C.proceeds.toFixed(2),C.realised.toFixed(2)].join(";"));
+  return "﻿"+lines.join("\n");
+}
+async function exportCsv(){
+  const csv=buildCsv();
+  const filename="carnet-de-cote-"+today()+".csv";
+  if(DL){
+    try{ await DL.save({filename,data:csv}); toast("Fichier enregistré"); return; }
+    catch(e){
+      if(e && e.code==="declined") return;
+      if(e && e.code==="rate_limited"){ toast("Une demande d'enregistrement est déjà ouverte."); return; }
+    }
+  }
+  showCsv(csv);
+}
+function showCsv(csv){
+  const m=modal(`<h3>Export CSV</h3>
+    <p class="lead">L'enregistrement direct n'est pas disponible ici. Sélectionne tout et copie — le fichier s'ouvre tel quel dans Excel, Numbers ou Google Sheets (séparateur point-virgule).</p>
+    <textarea rows="12" id="csvOut" readonly></textarea>
+    <div class="actions"><button class="btn" id="cClose">Fermer</button><button class="btn primary" id="cCopy">Copier</button></div>`);
+  m.querySelector("#csvOut").value=csv;
+  m.querySelector("#cClose").onclick=closeModal;
+  m.querySelector("#cCopy").onclick=()=>{
+    const ta=m.querySelector("#csvOut"); ta.select();
+    try{ navigator.clipboard.writeText(ta.value); toast("CSV copié"); }
+    catch(e){ toast("Sélectionne le texte puis Ctrl+C"); }
+  };
+}
+
+/* ================================================================
+   8. THÈME
+   ================================================================ */
+function initTheme(){
+  let t=null;
+  try{ t=localStorage.getItem("cdc-theme"); }catch(e){}
+  if(t) document.documentElement.setAttribute("data-theme",t);
+  document.getElementById("btnTheme").onclick=()=>{
+    const cur=document.documentElement.getAttribute("data-theme");
+    const sysDark=window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const next = cur ? (cur==="dark"?"light":"dark") : (sysDark?"light":"dark");
+    document.documentElement.setAttribute("data-theme",next);
+    try{ localStorage.setItem("cdc-theme",next); }catch(e){}
+  };
+}
+
+/* ================================================================
+   8bis. HÉBERGEMENT AUTONOME (GitHub Pages) — Firebase + cours en direct
+   Ce bloc remplace les capacités "db"/"sample"/"downloads" propres à
+   l'artefact Claude, absentes ici. Le reste de l'application ne change
+   pas : Firestore imite exactement l'interface db.doc(...).get/.set/
+   .onSnapshot déjà utilisée plus bas.
+   ================================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAL8Srm2Ohv28kUBLF2mI5sOE9WcsQpKUY",
+  authDomain: "carnet-de-cote.firebaseapp.com",
+  projectId: "carnet-de-cote",
+  storageBucket: "carnet-de-cote.firebasestorage.app",
+  messagingSenderId: "896445364092",
+  appId: "1:896445364092:web:81c16a6dcd3116873296f9"
+};
+/* Le document est fixe (une seule "ligne" pour tout le portefeuille) :
+   son chemin doit correspondre exactement à la règle Firestore publiée. */
+function firebaseDbShim(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const fs = firebase.firestore();
+  const ref = fs.collection("carnet").doc("x7k2m9p4q1");
+  return {
+    doc(){
+      return {
+        get: () => ref.get().then(snap=>({exists:snap.exists, data:()=>snap.data()})),
+        set: (obj) => ref.set(obj),
+        onSnapshot: (cb, errCb) => ref.onSnapshot(
+          snap => cb({exists:snap.exists, data:()=>snap.data(),
+                       metadata:{hasPendingWrites:snap.metadata.hasPendingWrites}}),
+          errCb
+        )
+      };
+    }
+  };
+}
+
+/* Cours en direct via Twelve Data (offre gratuite). TD_KEY est renseignée
+   par Éric — sans elle, ce bloc ne fait rien et les boutons manuels
+   (Google Finance / import Trade Republic) restent la seule source. */
+const TD_KEY = "3f97ca19a2d44967a348923e1dedd3e2";
+/* tickers dont le symbole Twelve Data diffère du ticker watchlist */
+const TD_SYMBOL = { ".INX":"SPX", ".IXIC":"IXIC" };
+/* valeurs non couvertes par l'API (bourses non supportées en offre
+   gratuite) : leur cours reste manuel, via "Actualiser les cours" */
+const TD_SKIP = ["P911","CATL","688836"];
+let lastLiveRefresh = null;
+
+async function fetchLivePrices(){
+  if(!TD_KEY) return;
+  const lignes = S.watchlist.filter(w=>!TD_SKIP.includes(w.tk));
+  if(!lignes.length) return;
+  const symbols = lignes.map(w=>TD_SYMBOL[w.tk]||w.tk);
+  try{
+    const [prixRes, fxRes] = await Promise.all([
+      fetch("https://api.twelvedata.com/price?symbol="+encodeURIComponent(symbols.join(","))+"&apikey="+TD_KEY).then(r=>r.json()),
+      fetch("https://api.twelvedata.com/exchange_rate?symbol=USD/EUR&apikey="+TD_KEY).then(r=>r.json())
+    ]);
+    let maj=0; const echecs=[];
+    lignes.forEach((w,i)=>{
+      const sym = symbols[i];
+      const entry = symbols.length>1 ? prixRes[sym] : prixRes;
+      const val = entry && parseFloat(entry.price);
+      if(val>0){ setPrice(w.tk, val, "USD"); maj++; } else { echecs.push(w.tk); }
+    });
+    if(fxRes && fxRes.rate){ S.fx = Math.round(parseFloat(fxRes.rate)*1e5)/1e5; }
+    if(maj){ S.pxDate = today(); save(true); }
+    lastLiveRefresh = new Date();
+    const hh = String(lastLiveRefresh.getHours()).padStart(2,"0")+":"+String(lastLiveRefresh.getMinutes()).padStart(2,"0");
+    const el = document.getElementById("liveFoot");
+    if(el) el.textContent = "Cours en direct · "+hh+(echecs.length?(" · "+echecs.length+" valeur(s) manuelle(s)"):"");
+    render();
+  }catch(e){
+    const el = document.getElementById("liveFoot");
+    if(el) el.textContent = "Cours en direct indisponible (réessai automatique)";
+  }
+}
+
+/* branche la persistance (Firestore ou capacité Claude) une fois pour
+   toutes : identique dans les deux cas, seule la source diffère. */
+function wireDb(db){
+  DB=db;
+  const ref=db.doc("portfolio/state");
+  ref.get().then(snap=>{
+    if(snap.exists){
+      S = normalize(snap.data(), S);
+      saveLocal(); render();
+      if(pending) save(true);
+    } else {
+      ref.set(JSON.parse(JSON.stringify(S))).catch(()=>{});
+    }
+    setSync("Synchronisé sur tous tes appareils");
+    ref.onSnapshot(sn=>{
+      if(!sn.exists || sn.metadata.hasPendingWrites) return;
+      if(pending){
+        S.history = mergeHistory(S.history, degeler((sn.data()||{}).history));
+        saveLocal(); render();
+        return;
+      }
+      S = normalize(sn.data(), S);
+      saveLocal(); render();
+    }, ()=>setSync("Synchronisation interrompue — enregistré sur cet appareil"));
+  }).catch(()=>setSync("Stockage local (cet appareil)"));
+}
+
+/* ================================================================
+   9. DÉMARRAGE
+   ================================================================ */
+function boot(){
+  S = normalize(loadLocal());
+  initTheme();
+
+  document.getElementById("nav").onclick=e=>{
+    const b=e.target.closest("button[data-v]"); if(!b) return;
+    view=b.dataset.v; filterText=""; jType="ALL"; jYear="ALL"; notice=null; render();
+  };
+  document.getElementById("btnSnap").onclick=snapshot;
+  document.getElementById("btnGF").onclick=openGF;
+  document.getElementById("btnImportTR").onclick=openImportTR;
+  document.getElementById("btnExport").onclick=exportCsv;
+
+  render();
+
+  /* capacités — la page marche sans elles, elles s'allument après coup */
+  if(window.claude && typeof window.claude.use==="function"){
+    setSync("Synchronisation…");
+    window.claude.use("db").then(db=>{
+      if(!db){ setSync("Stockage local (cet appareil)"); return; }
+      wireDb(db);
+    }).catch(()=>setSync("Stockage local (cet appareil)"));
+    window.claude.use("sample").then(s=>{ if(s) SAMPLE=s; }).catch(()=>{});
+    window.claude.use("downloads").then(d=>{ if(d) DL=d; }).catch(()=>{});
+  } else if(typeof firebase!=="undefined"){
+    setSync("Synchronisation…");
+    try{ wireDb(firebaseDbShim()); }
+    catch(e){ setSync("Stockage local (cet appareil)"); }
+  } else {
+    setSync("Stockage local (cet appareil)");
+  }
+
+  /* cours en direct : au chargement, puis toutes les 20 minutes */
+  fetchLivePrices();
+  setInterval(fetchLivePrices, 20*60*1000);
+}
+
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",boot);
+else boot();
+</script>
+</body>
+</html>
